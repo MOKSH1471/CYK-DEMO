@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FEATURED_PROJECTS } from '../data/mockData';
 import { Project } from '../types';
 import { Filter, Layers, MapPin, ArrowUpRight, X, Check } from 'lucide-react';
+import { AccordionGallery, AccordionGalleryItem } from './AccordionGallery';
 
 interface CaseStudiesProps {
   onEnquireProject: (projectName?: string) => void;
@@ -11,6 +12,39 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedStageTag, setSelectedStageTag] = useState<string>('All');
   const [activeModalProject, setActiveModalProject] = useState<Project | null>(null);
+
+  const galleryItems: AccordionGalleryItem[] = [
+    {
+      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/13.jpg',
+      label: 'Prawn Risotto — Recipe Development',
+      alt: 'Prawn Risotto from the CYK Test Kitchen Gallery'
+    },
+    {
+      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/7.jpg',
+      label: 'Artisan Croissant — Boulangerie Formulation',
+      alt: 'Artisan Croissant from the CYK Test Kitchen Gallery'
+    },
+    {
+      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/2.jpg',
+      label: 'Paneer Thecha Taco — Regional Fusion',
+      alt: 'Paneer Thecha Taco from the CYK Test Kitchen Gallery'
+    },
+    {
+      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/16.jpg',
+      label: 'Craft Ramen — Broth & Noodle Engineering',
+      alt: 'Craft Ramen from the CYK Test Kitchen Gallery'
+    },
+    {
+      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/6.jpg',
+      label: 'Corn Chaat — Contemporary Street Food',
+      alt: 'Corn Chaat from the CYK Test Kitchen Gallery'
+    },
+    {
+      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/10.jpg',
+      label: 'Sabudana Falafel & Potato Hummus',
+      alt: 'Sabudana Falafel and Potato Hummus from the CYK Test Kitchen Gallery'
+    }
+  ];
 
   const categories = ['All', 'QSR', 'Cafe', 'Bar & Restaurant', 'Bakery'];
   const stageTags = [
@@ -31,9 +65,9 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
   return (
     <section id="projects" className="py-20 bg-white border-b border-[#EAEAEA]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
-        <div className="max-w-2xl mb-10">
+        <div className="max-w-2xl mb-8">
           <h2 className="font-display font-black text-2xl sm:text-3xl text-[#14181F] tracking-tight">
             Projects & Case Studies
           </h2>
@@ -42,9 +76,34 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
           </p>
         </div>
 
+        {/* Gallery Section from CYK Test Kitchen */}
+        <div className="mb-14">
+          <div className="mb-3">
+            <h3 className="text-sm font-bold text-[#847445] tracking-wide uppercase">
+              Culinary R&D Gallery
+            </h3>
+            <p className="text-xs text-slate-500">
+              Proprietary recipes and culinary formulations developed in the CYK test kitchen.
+            </p>
+          </div>
+          <AccordionGallery
+            items={galleryItems}
+            defaultIndex={0}
+            accentColor="#847445"
+            overlayColor="#121316"
+            textColor="#FAF8F5"
+            height={420}
+            gap={10}
+            radius={18}
+            expandRatio={0.46}
+            trigger="hover"
+            grayscale={true}
+          />
+        </div>
+
         {/* 2-Facet Filters */}
         <div className="p-4 rounded-xl bg-white border border-[#EAEAEA] shadow-2xs mb-8 space-y-3">
-          
+
           {/* Facet 1: Business Type */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-mono uppercase tracking-wider text-slate-500 mr-2 flex items-center gap-1 font-bold">
@@ -55,11 +114,10 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-[#847445] text-white font-bold shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-[#EAEAEA]'
-                }`}
+                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer ${selectedCategory === cat
+                  ? 'bg-[#847445] text-white font-bold shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-[#EAEAEA]'
+                  }`}
               >
                 {cat}
               </button>
@@ -76,11 +134,10 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
               <button
                 key={tag}
                 onClick={() => setSelectedStageTag(tag)}
-                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                  selectedStageTag === tag
-                    ? 'bg-[#847445] text-white font-bold shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-[#EAEAEA]'
-                }`}
+                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer ${selectedStageTag === tag
+                  ? 'bg-[#847445] text-white font-bold shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-[#EAEAEA]'
+                  }`}
               >
                 {tag}
               </button>
@@ -99,13 +156,13 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
               <div>
                 {/* Real Client Image from conceptyourkitchen.com */}
                 <div className="relative h-48 overflow-hidden bg-slate-100">
-                  <img 
-                    src={project.image} 
+                  <img
+                    src={project.image}
                     alt={project.name}
                     loading="lazy"
-                    className="w-full h-full object-cover" 
+                    className="w-full h-full object-cover"
                   />
-                  
+
                   <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded bg-white/95 text-slate-800 text-[10px] font-mono font-bold shadow-xs">
                     {project.category}
                   </div>
@@ -158,7 +215,7 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
       {activeModalProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
           <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-[#EAEAEA] p-6 sm:p-8 shadow-2xl">
-            
+
             {/* Close Button */}
             <button
               onClick={() => setActiveModalProject(null)}
@@ -186,16 +243,16 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
 
             {/* Real Project Image */}
             <div className="h-56 rounded-xl overflow-hidden mb-5 border border-slate-200 bg-slate-100">
-              <img 
-                src={activeModalProject.image} 
+              <img
+                src={activeModalProject.image}
                 alt={activeModalProject.name}
-                className="w-full h-full object-cover" 
+                className="w-full h-full object-cover"
               />
             </div>
 
             {/* Modal Body */}
             <div className="space-y-4 text-xs sm:text-sm text-slate-700">
-              
+
               <div>
                 <h4 className="text-xs font-mono uppercase tracking-wider text-slate-500 font-bold mb-1">
                   About This Project
