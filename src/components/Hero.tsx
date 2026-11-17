@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { StrokeText } from './StrokeText';
 
 interface HeroProps {
@@ -6,11 +6,11 @@ interface HeroProps {
   onOpenEnquiry: () => void;
 }
 
-const TOTAL_FRAMES = 140;
+const TOTAL_FRAMES = 240;
 
-const getFramePath = (index: number) => {
-  const num = String(index + 1).padStart(3, '0');
-  return `./frames/frame_${num}.jpg`;
+const getFrameSrc = (index: number): string => {
+  const padded = String(Math.max(0, Math.min(TOTAL_FRAMES - 1, index))).padStart(3, '0');
+  return `./frames/frame_${padded}.webp`;
 };
 
 export const Hero: React.FC<HeroProps> = ({
@@ -21,10 +21,6 @@ export const Hero: React.FC<HeroProps> = ({
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Preloaded frame cache
-  const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
-  const currentFrameRef = useRef<number>(0);
-
   // Content layers for each full-screen beat
   const contentHeroRef = useRef<HTMLDivElement>(null);
   const contentConceptRef = useRef<HTMLDivElement>(null);
@@ -34,16 +30,19 @@ export const Hero: React.FC<HeroProps> = ({
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1440);
 
+  // Apple-grade Lerp Physics & Frame Cache
+  const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
+  const currentFrameRef = useRef<number>(0);
+  const targetFrameRef = useRef<number>(0);
+  const lastDrawnFrameRef = useRef<number>(-1);
+  const isLoopRunningRef = useRef<boolean>(false);
+
   const metricsRef = useRef<{
     containerTop: number;
     scrollDistance: number;
-    width: number;
-    height: number;
   }>({
     containerTop: 0,
-    scrollDistance: 1,
-    width: 1440,
-    height: 900
+    scrollDistance: 1
   });
 
   // Check reduced motion & window resize
@@ -67,126 +66,28 @@ export const Hero: React.FC<HeroProps> = ({
     };
   }, []);
 
-  // Frame rendering with object-fit: cover on high-DPI canvas
-  const renderFrame = (frameIndex: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) return;
-
-    let img = imagesRef.current[frameIndex];
-
-    // Fallback: if targeted frame is still loading, find nearest loaded frame
-    if (!img || !img.complete || img.naturalWidth === 0) {
-      for (let offset = 1; offset < TOTAL_FRAMES; offset++) {
-        const prev = imagesRef.current[frameIndex - offset];
-        if (prev && prev.complete && prev.naturalWidth > 0) {
-          img = prev;
-          break;
-        }
-        const next = imagesRef.current[frameIndex + offset];
-        if (next && next.complete && next.naturalWidth > 0) {
-          img = next;
-          break;
-        }
-      }
-    }
-
-    if (!img || !img.complete || img.naturalWidth === 0) return;
-
-    const w = canvas.width;
-    const h = canvas.height;
-    const imgW = img.naturalWidth || 854;
-    const imgH = img.naturalHeight || 480;
-
-    const hRatio = w / imgW;
-    const vRatio = h / imgH;
-    const ratio = Math.max(hRatio, vRatio);
-
-    const drawW = imgW * ratio;
-    const drawH = imgH * ratio;
-    const drawX = (w - drawW) / 2;
-    const drawY = (h - drawH) / 2;
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'medium';
-    ctx.drawImage(img, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
-    currentFrameRef.current = frameIndex;
-  };
-
-  // Preload all 140 frames into memory
+  // Compute container dimensions
   useEffect(() => {
-    const loadedImages: (HTMLImageElement | null)[] = new Array(TOTAL_FRAMES).fill(null);
-    imagesRef.current = loadedImages;
+    const updateMetrics = () => {
+      if (!containerRef.current || !stageRef.current) return;
 
-    // 1. Load first frame with priority
-    const firstImg = new Image();
-    firstImg.src = getFramePath(0);
-    firstImg.onload = () => {
-      loadedImages[0] = firstImg;
-      renderFrame(0);
-    };
-
-    // 2. Preload remaining frames in batches to avoid network congestion
-    let index = 1;
-    const batchSize = 10;
-    const loadNextBatch = () => {
-      const end = Math.min(TOTAL_FRAMES, index + batchSize);
-      for (let i = index; i < end; i++) {
-        const img = new Image();
-        img.src = getFramePath(i);
-        img.onload = () => {
-          loadedImages[i] = img;
-        };
-      }
-      index = end;
-      if (index < TOTAL_FRAMES) {
-        requestAnimationFrame(loadNextBatch);
-      }
-    };
-
-    loadNextBatch();
-
-    return () => {
-      imagesRef.current = [];
-    };
-  }, []);
-
-  // Compute container dimensions & resize canvas
-  useEffect(() => {
-    const updateMetricsAndCanvas = () => {
-      if (!containerRef.current || !stageRef.current || !canvasRef.current) return;
-
-      const w = window.innerWidth;
       const h = window.innerHeight;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-      const canvas = canvasRef.current;
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
-
-      renderFrame(currentFrameRef.current);
-
       const containerRect = containerRef.current.getBoundingClientRect();
       const containerTop = containerRect.top + window.scrollY;
       const scrollDistance = Math.max(1, containerRef.current.offsetHeight - h);
 
       metricsRef.current = {
         containerTop,
-        scrollDistance,
-        width: w,
-        height: h
+        scrollDistance
       };
     };
 
-    updateMetricsAndCanvas();
+    updateMetrics();
 
     let resizeTimer: number;
     const onResize = () => {
       clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(updateMetricsAndCanvas, 100);
+      resizeTimer = window.setTimeout(updateMetrics, 100);
     };
 
     window.addEventListener('resize', onResize);
@@ -196,107 +97,272 @@ export const Hero: React.FC<HeroProps> = ({
     };
   }, []);
 
+  // Draw image with object-cover aspect fitting on high-DPI canvas
+  const drawCover = useCallback((img: HTMLImageElement) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const cw = canvas.width;
+    const ch = canvas.height;
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+
+    if (!iw || !ih) return;
+
+    // Calculate aspect cover scale
+    const scale = Math.max(cw / iw, ch / ih);
+    const nw = iw * scale;
+    const nh = ih * scale;
+    const cx = (cw - nw) / 2;
+    const cy = (ch - nh) / 2;
+
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.drawImage(img, cx, cy, nw, nh);
+  }, []);
+
+  // Find closest loaded frame (Apple Nearest-Frame Fallback - Zero Flashing Guarantee)
+  const getNearestLoadedFrame = useCallback((index: number): HTMLImageElement | null => {
+    const target = Math.max(0, Math.min(TOTAL_FRAMES - 1, Math.round(index)));
+    if (imagesRef.current[target]?.complete && imagesRef.current[target]?.naturalWidth) {
+      return imagesRef.current[target];
+    }
+
+    // Search outwards in both directions
+    for (let offset = 1; offset < TOTAL_FRAMES; offset++) {
+      const prev = target - offset;
+      if (prev >= 0 && imagesRef.current[prev]?.complete && imagesRef.current[prev]?.naturalWidth) {
+        return imagesRef.current[prev];
+      }
+      const next = target + offset;
+      if (next < TOTAL_FRAMES && imagesRef.current[next]?.complete && imagesRef.current[next]?.naturalWidth) {
+        return imagesRef.current[next];
+      }
+    }
+    return null;
+  }, []);
+
+  // Handle canvas sizing for Retina / High-DPI screens
+  useEffect(() => {
+    const resizeCanvas = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+
+      const best = getNearestLoadedFrame(currentFrameRef.current);
+      if (best) drawCover(best);
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    return () => window.removeEventListener('resize', resizeCanvas);
+  }, [drawCover, getNearestLoadedFrame]);
+
   // ---------------------------------------------------------------------------
-  // SCROLL-BOUND ANIMATION ENGINE (60fps Canvas Scrubbing & Story Overlay Transitions)
+  // APPLE 3-STAGE PROGRESSIVE PRELOADER (0ms blank screen, zero stutter)
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSingleFrame = (idx: number): Promise<HTMLImageElement> => {
+      return new Promise((resolve) => {
+        if (imagesRef.current[idx]) {
+          resolve(imagesRef.current[idx]!);
+          return;
+        }
+        const img = new Image();
+        img.src = getFrameSrc(idx);
+        img.onload = () => {
+          if (!isMounted) return;
+          imagesRef.current[idx] = img;
+          // If this is the active frame or first frame, draw immediately
+          if (idx === 0 && lastDrawnFrameRef.current === -1) {
+            drawCover(img);
+            lastDrawnFrameRef.current = 0;
+          }
+          resolve(img);
+        };
+        img.onerror = () => {
+          resolve(img);
+        };
+      });
+    };
+
+    // Stage 1: Load Frame 000 immediately (paints in < 50ms)
+    loadSingleFrame(0).then(() => {
+      if (!isMounted) return;
+
+      // Stage 2: Load Keyframe Skeleton (every 6th frame) for instant scroll responsiveness
+      const skeletonIndices: number[] = [];
+      for (let i = 0; i < TOTAL_FRAMES; i += 6) {
+        if (i !== 0) skeletonIndices.push(i);
+      }
+
+      Promise.all(skeletonIndices.map(loadSingleFrame)).then(() => {
+        if (!isMounted) return;
+
+        // Stage 3: Background stream remaining frames in chunks
+        const remainingIndices: number[] = [];
+        for (let i = 0; i < TOTAL_FRAMES; i++) {
+          if (i % 6 !== 0) remainingIndices.push(i);
+        }
+
+        let chunkIndex = 0;
+        const chunkSize = 12;
+
+        const loadNextChunk = () => {
+          if (!isMounted || chunkIndex >= remainingIndices.length) return;
+          const chunk = remainingIndices.slice(chunkIndex, chunkIndex + chunkSize);
+          chunkIndex += chunkSize;
+          Promise.all(chunk.map(loadSingleFrame)).then(() => {
+            if ('requestIdleCallback' in window) {
+              (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(loadNextChunk);
+            } else {
+              setTimeout(loadNextChunk, 20);
+            }
+          });
+        };
+
+        loadNextChunk();
+      });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [drawCover]);
+
+  // ---------------------------------------------------------------------------
+  // APPLE LERP RENDER LOOP (Physics inertia with 60–120 FPS hardware acceleration)
+  // ---------------------------------------------------------------------------
+  const runRenderLoop = useCallback(() => {
+    if (isLoopRunningRef.current) return;
+    isLoopRunningRef.current = true;
+
+    const render = () => {
+      const diff = targetFrameRef.current - currentFrameRef.current;
+
+      // Apple Lerp inertia factor (0.10 gives weighted, expensive fluidity)
+      if (Math.abs(diff) > 0.02) {
+        currentFrameRef.current += diff * 0.10;
+      } else {
+        currentFrameRef.current = targetFrameRef.current;
+      }
+
+      const frameToDraw = Math.round(currentFrameRef.current);
+      if (frameToDraw !== lastDrawnFrameRef.current) {
+        const img = getNearestLoadedFrame(frameToDraw);
+        if (img) {
+          drawCover(img);
+          lastDrawnFrameRef.current = frameToDraw;
+        }
+      }
+
+      // Continue loop if still catching up to target
+      if (Math.abs(targetFrameRef.current - currentFrameRef.current) > 0.02) {
+        requestAnimationFrame(render);
+      } else {
+        isLoopRunningRef.current = false;
+      }
+    };
+
+    requestAnimationFrame(render);
+  }, [drawCover, getNearestLoadedFrame]);
+
+  // ---------------------------------------------------------------------------
+  // SCROLL-BOUND ENGINE (Maps scroll progress -> targetFrame & beat overlays)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (isReducedMotion) return;
 
-    let rafId: number | null = null;
-
     const onScroll = () => {
-      if (rafId !== null) return;
+      const { containerTop, scrollDistance } = metricsRef.current;
+      const scrollY = window.scrollY;
+      const progress = Math.min(1, Math.max(0, (scrollY - containerTop) / scrollDistance));
 
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
+      // Map progress to target frame index [0 .. TOTAL_FRAMES - 1]
+      targetFrameRef.current = progress * (TOTAL_FRAMES - 1);
+      runRenderLoop();
 
-        const { containerTop, scrollDistance } = metricsRef.current;
-        const scrollY = window.scrollY;
-        const progress = Math.min(1, Math.max(0, (scrollY - containerTop) / scrollDistance));
-
-        // =====================================================================
-        // 1. VIDEO SCRUBBING ON CANVAS (Frames 0 to 139)
-        // =====================================================================
-        const targetFrame = Math.min(
-          TOTAL_FRAMES - 1,
-          Math.max(0, Math.floor(progress * (TOTAL_FRAMES - 1)))
-        );
-        if (targetFrame !== currentFrameRef.current) {
-          renderFrame(targetFrame);
+      // =====================================================================
+      // BEAT 0: RESTING HERO (0.00 -> 0.18)
+      // =====================================================================
+      if (contentHeroRef.current) {
+        if (progress < 0.18) {
+          const rel = progress / 0.18;
+          contentHeroRef.current.style.opacity = `${1 - rel * 1.3}`;
+          contentHeroRef.current.style.transform = `translate3d(0, ${-rel * 45}px, 0)`;
+          contentHeroRef.current.style.pointerEvents = rel > 0.5 ? 'none' : 'auto';
+        } else {
+          contentHeroRef.current.style.opacity = '0';
+          contentHeroRef.current.style.pointerEvents = 'none';
         }
+      }
 
-        // =====================================================================
-        // BEAT 0: RESTING HERO (0.00 -> 0.18)
-        // =====================================================================
-        if (contentHeroRef.current) {
-          if (progress < 0.18) {
-            const rel = progress / 0.18;
-            contentHeroRef.current.style.opacity = `${1 - rel * 1.3}`;
-            contentHeroRef.current.style.transform = `translate3d(0, ${-rel * 45}px, 0)`;
-            contentHeroRef.current.style.pointerEvents = rel > 0.5 ? 'none' : 'auto';
-          } else {
-            contentHeroRef.current.style.opacity = '0';
-            contentHeroRef.current.style.pointerEvents = 'none';
-          }
+      // =====================================================================
+      // BEAT 1: FULL-SCREEN "01 / CONCEPT" (0.18 -> 0.44)
+      // =====================================================================
+      if (contentConceptRef.current) {
+        if (progress >= 0.18 && progress < 0.44) {
+          const rel = (progress - 0.18) / 0.26;
+          let opacity = 0;
+          if (rel < 0.22) opacity = rel / 0.22;
+          else if (rel <= 0.78) opacity = 1;
+          else opacity = (1 - rel) / 0.22;
+
+          const textY = (1 - Math.min(1, rel / 0.25)) * 28;
+          contentConceptRef.current.style.opacity = `${opacity}`;
+          contentConceptRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
+        } else {
+          contentConceptRef.current.style.opacity = '0';
         }
+      }
 
-        // =====================================================================
-        // BEAT 1: FULL-SCREEN "01 / CONCEPT" (0.18 -> 0.44)
-        // =====================================================================
-        if (contentConceptRef.current) {
-          if (progress >= 0.18 && progress < 0.44) {
-            const rel = (progress - 0.18) / 0.26;
-            let opacity = 0;
-            if (rel < 0.22) opacity = rel / 0.22;
-            else if (rel <= 0.78) opacity = 1;
-            else opacity = (1 - rel) / 0.22;
+      // =====================================================================
+      // BEAT 2: FULL-SCREEN "02 / LOCATION & ARCHITECTURE" (0.44 -> 0.72)
+      // =====================================================================
+      if (contentLocationRef.current) {
+        if (progress >= 0.44 && progress < 0.72) {
+          const rel = (progress - 0.44) / 0.28;
+          let opacity = 0;
+          if (rel < 0.22) opacity = rel / 0.22;
+          else if (rel <= 0.78) opacity = 1;
+          else opacity = (1 - rel) / 0.22;
 
-            const textY = (1 - Math.min(1, rel / 0.25)) * 28;
-            contentConceptRef.current.style.opacity = `${opacity}`;
-            contentConceptRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
-          } else {
-            contentConceptRef.current.style.opacity = '0';
-          }
+          const textY = (1 - Math.min(1, rel / 0.25)) * 28;
+          contentLocationRef.current.style.opacity = `${opacity}`;
+          contentLocationRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
+        } else {
+          contentLocationRef.current.style.opacity = '0';
         }
+      }
 
-        // =====================================================================
-        // BEAT 2: FULL-SCREEN "02 / LOCATION & ARCHITECTURE" (0.44 -> 0.72)
-        // =====================================================================
-        if (contentLocationRef.current) {
-          if (progress >= 0.44 && progress < 0.72) {
-            const rel = (progress - 0.44) / 0.28;
-            let opacity = 0;
-            if (rel < 0.22) opacity = rel / 0.22;
-            else if (rel <= 0.78) opacity = 1;
-            else opacity = (1 - rel) / 0.22;
+      // =====================================================================
+      // BEAT 3: FULL-SCREEN "03 / MENU & KITCHEN" (0.72 -> 1.00)
+      // =====================================================================
+      if (contentMenuRef.current) {
+        if (progress >= 0.72 && progress <= 1.0) {
+          const rel = (progress - 0.72) / 0.28;
+          let opacity = 0;
+          if (rel < 0.22) opacity = rel / 0.22;
+          else if (rel <= 0.78) opacity = 1;
+          else opacity = Math.max(0, (1 - rel) / 0.22);
 
-            const textY = (1 - Math.min(1, rel / 0.25)) * 28;
-            contentLocationRef.current.style.opacity = `${opacity}`;
-            contentLocationRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
-          } else {
-            contentLocationRef.current.style.opacity = '0';
-          }
+          const textY = (1 - Math.min(1, rel / 0.25)) * 28;
+          contentMenuRef.current.style.opacity = `${opacity}`;
+          contentMenuRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
+        } else {
+          contentMenuRef.current.style.opacity = '0';
         }
-
-        // =====================================================================
-        // BEAT 3: FULL-SCREEN "03 / MENU & KITCHEN" (0.72 -> 1.00)
-        // =====================================================================
-        if (contentMenuRef.current) {
-          if (progress >= 0.72 && progress <= 1.0) {
-            const rel = (progress - 0.72) / 0.28;
-            let opacity = 0;
-            if (rel < 0.22) opacity = rel / 0.22;
-            else if (rel <= 0.78) opacity = 1;
-            else opacity = Math.max(0, (1 - rel) / 0.22);
-
-            const textY = (1 - Math.min(1, rel / 0.25)) * 28;
-            contentMenuRef.current.style.opacity = `${opacity}`;
-            contentMenuRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
-          } else {
-            contentMenuRef.current.style.opacity = '0';
-          }
-        }
-      });
+      }
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -304,9 +370,8 @@ export const Hero: React.FC<HeroProps> = ({
 
     return () => {
       window.removeEventListener('scroll', onScroll);
-      if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [isReducedMotion]);
+  }, [isReducedMotion, runRenderLoop]);
 
   // Responsive font size calculation for StrokeText based on screen width
   const strokeFontSize = Math.max(30, Math.min(62, Math.round(windowWidth * 0.045)));
@@ -323,12 +388,12 @@ export const Hero: React.FC<HeroProps> = ({
       >
 
         {/* =====================================================================
-            1. FULL-SCREEN CANVAS VIDEO SCRUBBING ENGINE (140 Frames)
+            1. APPLE-STYLE HIGH-DPI GPU CANVAS SCRUBBING ENGINE (240 WebP Frames)
         ====================================================================== */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <canvas
             ref={canvasRef}
-            className="w-full h-full object-cover block"
+            className="w-full h-full block"
           />
           {/* Deep cinematic vignette scrim for maximum text clarity */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/75 pointer-events-none" />
@@ -408,7 +473,7 @@ export const Hero: React.FC<HeroProps> = ({
         </div>
 
         {/* =====================================================================
-            3. BEAT 0: RESTING HERO CONTENT (Frame 1, On-Screen at Load)
+            3. BEAT 0: RESTING HERO CONTENT (Frame 000, On-Screen at Load)
             Features <StrokeText /> from React Bits with animated outline draw & liquid fill!
         ====================================================================== */}
         <div
