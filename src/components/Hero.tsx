@@ -6,18 +6,24 @@ interface HeroProps {
   onOpenEnquiry: () => void;
 }
 
+const TOTAL_FRAMES = 140;
+
+const getFramePath = (index: number) => {
+  const num = String(index + 1).padStart(3, '0');
+  return `./frames/frame_${num}.jpg`;
+};
+
 export const Hero: React.FC<HeroProps> = ({
   onStartJourney,
   onOpenEnquiry
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Background layers for each full-screen beat
-  const bgHeroRef = useRef<HTMLDivElement>(null);
-  const bgConceptRef = useRef<HTMLDivElement>(null);
-  const bgLocationRef = useRef<HTMLDivElement>(null);
-  const bgMenuRef = useRef<HTMLDivElement>(null);
+  // Preloaded frame cache
+  const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
+  const currentFrameRef = useRef<number>(0);
 
   // Content layers for each full-screen beat
   const contentHeroRef = useRef<HTMLDivElement>(null);
@@ -61,13 +67,108 @@ export const Hero: React.FC<HeroProps> = ({
     };
   }, []);
 
-  // Compute container dimensions
+  // Frame rendering with object-fit: cover on high-DPI canvas
+  const renderFrame = (frameIndex: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) return;
+
+    let img = imagesRef.current[frameIndex];
+
+    // Fallback: if targeted frame is still loading, find nearest loaded frame
+    if (!img || !img.complete || img.naturalWidth === 0) {
+      for (let offset = 1; offset < TOTAL_FRAMES; offset++) {
+        const prev = imagesRef.current[frameIndex - offset];
+        if (prev && prev.complete && prev.naturalWidth > 0) {
+          img = prev;
+          break;
+        }
+        const next = imagesRef.current[frameIndex + offset];
+        if (next && next.complete && next.naturalWidth > 0) {
+          img = next;
+          break;
+        }
+      }
+    }
+
+    if (!img || !img.complete || img.naturalWidth === 0) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const imgW = img.naturalWidth || 854;
+    const imgH = img.naturalHeight || 480;
+
+    const hRatio = w / imgW;
+    const vRatio = h / imgH;
+    const ratio = Math.max(hRatio, vRatio);
+
+    const drawW = imgW * ratio;
+    const drawH = imgH * ratio;
+    const drawX = (w - drawW) / 2;
+    const drawY = (h - drawH) / 2;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'medium';
+    ctx.drawImage(img, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
+    currentFrameRef.current = frameIndex;
+  };
+
+  // Preload all 140 frames into memory
   useEffect(() => {
-    const updateMetrics = () => {
-      if (!containerRef.current || !stageRef.current) return;
+    const loadedImages: (HTMLImageElement | null)[] = new Array(TOTAL_FRAMES).fill(null);
+    imagesRef.current = loadedImages;
+
+    // 1. Load first frame with priority
+    const firstImg = new Image();
+    firstImg.src = getFramePath(0);
+    firstImg.onload = () => {
+      loadedImages[0] = firstImg;
+      renderFrame(0);
+    };
+
+    // 2. Preload remaining frames in batches to avoid network congestion
+    let index = 1;
+    const batchSize = 10;
+    const loadNextBatch = () => {
+      const end = Math.min(TOTAL_FRAMES, index + batchSize);
+      for (let i = index; i < end; i++) {
+        const img = new Image();
+        img.src = getFramePath(i);
+        img.onload = () => {
+          loadedImages[i] = img;
+        };
+      }
+      index = end;
+      if (index < TOTAL_FRAMES) {
+        requestAnimationFrame(loadNextBatch);
+      }
+    };
+
+    loadNextBatch();
+
+    return () => {
+      imagesRef.current = [];
+    };
+  }, []);
+
+  // Compute container dimensions & resize canvas
+  useEffect(() => {
+    const updateMetricsAndCanvas = () => {
+      if (!containerRef.current || !stageRef.current || !canvasRef.current) return;
 
       const w = window.innerWidth;
       const h = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      const canvas = canvasRef.current;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+
+      renderFrame(currentFrameRef.current);
+
       const containerRect = containerRef.current.getBoundingClientRect();
       const containerTop = containerRect.top + window.scrollY;
       const scrollDistance = Math.max(1, containerRef.current.offsetHeight - h);
@@ -80,12 +181,12 @@ export const Hero: React.FC<HeroProps> = ({
       };
     };
 
-    updateMetrics();
+    updateMetricsAndCanvas();
 
     let resizeTimer: number;
     const onResize = () => {
       clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(updateMetrics, 100);
+      resizeTimer = window.setTimeout(updateMetricsAndCanvas, 100);
     };
 
     window.addEventListener('resize', onResize);
@@ -96,14 +197,12 @@ export const Hero: React.FC<HeroProps> = ({
   }, []);
 
   // ---------------------------------------------------------------------------
-  // FULL-SCREEN SCROLL TRANSITIONS: Cross-fades & Ken Burns Zoom (60fps)
-  // Direct DOM manipulation via requestAnimationFrame — no React re-renders on scroll
+  // SCROLL-BOUND ANIMATION ENGINE (60fps Canvas Scrubbing & Story Overlay Transitions)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (isReducedMotion) return;
 
     let rafId: number | null = null;
-    let lastStep = 0;
 
     const onScroll = () => {
       if (rafId !== null) return;
@@ -116,92 +215,84 @@ export const Hero: React.FC<HeroProps> = ({
         const progress = Math.min(1, Math.max(0, (scrollY - containerTop) / scrollDistance));
 
         // =====================================================================
-        // BEAT 0: RESTING HERO (0.00 -> 0.20)
+        // 1. VIDEO SCRUBBING ON CANVAS (Frames 0 to 139)
         // =====================================================================
-        if (contentHeroRef.current && bgHeroRef.current) {
-          if (progress < 0.20) {
-            const rel = progress / 0.20;
-            bgHeroRef.current.style.opacity = `${1 - rel * 0.7}`;
-            bgHeroRef.current.style.transform = `scale(${1 + rel * 0.05})`;
+        const targetFrame = Math.min(
+          TOTAL_FRAMES - 1,
+          Math.max(0, Math.floor(progress * (TOTAL_FRAMES - 1)))
+        );
+        if (targetFrame !== currentFrameRef.current) {
+          renderFrame(targetFrame);
+        }
 
+        // =====================================================================
+        // BEAT 0: RESTING HERO (0.00 -> 0.18)
+        // =====================================================================
+        if (contentHeroRef.current) {
+          if (progress < 0.18) {
+            const rel = progress / 0.18;
             contentHeroRef.current.style.opacity = `${1 - rel * 1.3}`;
-            contentHeroRef.current.style.transform = `translate3d(0, ${-rel * 50}px, 0)`;
+            contentHeroRef.current.style.transform = `translate3d(0, ${-rel * 45}px, 0)`;
             contentHeroRef.current.style.pointerEvents = rel > 0.5 ? 'none' : 'auto';
           } else {
-            bgHeroRef.current.style.opacity = '0';
             contentHeroRef.current.style.opacity = '0';
             contentHeroRef.current.style.pointerEvents = 'none';
           }
         }
 
         // =====================================================================
-        // BEAT 1: FULL-SCREEN "01 / CONCEPT" (0.20 -> 0.45)
+        // BEAT 1: FULL-SCREEN "01 / CONCEPT" (0.18 -> 0.44)
         // =====================================================================
-        if (bgConceptRef.current && contentConceptRef.current) {
-          if (progress >= 0.18 && progress < 0.45) {
-            const rel = (progress - 0.18) / 0.27; // 0 to 1
+        if (contentConceptRef.current) {
+          if (progress >= 0.18 && progress < 0.44) {
+            const rel = (progress - 0.18) / 0.26;
             let opacity = 0;
-            if (rel < 0.25) opacity = rel / 0.25;
-            else if (rel <= 0.75) opacity = 1;
-            else opacity = (1 - rel) / 0.25;
+            if (rel < 0.22) opacity = rel / 0.22;
+            else if (rel <= 0.78) opacity = 1;
+            else opacity = (1 - rel) / 0.22;
 
-            const scale = 1.04 - rel * 0.04;
-            bgConceptRef.current.style.opacity = `${opacity}`;
-            bgConceptRef.current.style.transform = `scale(${scale})`;
-
-            const textY = (1 - Math.min(1, rel / 0.3)) * 30;
+            const textY = (1 - Math.min(1, rel / 0.25)) * 28;
             contentConceptRef.current.style.opacity = `${opacity}`;
             contentConceptRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
           } else {
-            bgConceptRef.current.style.opacity = '0';
             contentConceptRef.current.style.opacity = '0';
           }
         }
 
         // =====================================================================
-        // BEAT 2: FULL-SCREEN "02 / LOCATION" (0.45 -> 0.70)
+        // BEAT 2: FULL-SCREEN "02 / LOCATION & ARCHITECTURE" (0.44 -> 0.72)
         // =====================================================================
-        if (bgLocationRef.current && contentLocationRef.current) {
-          if (progress >= 0.43 && progress < 0.70) {
-            const rel = (progress - 0.43) / 0.27; // 0 to 1
+        if (contentLocationRef.current) {
+          if (progress >= 0.44 && progress < 0.72) {
+            const rel = (progress - 0.44) / 0.28;
             let opacity = 0;
-            if (rel < 0.25) opacity = rel / 0.25;
-            else if (rel <= 0.75) opacity = 1;
-            else opacity = (1 - rel) / 0.25;
+            if (rel < 0.22) opacity = rel / 0.22;
+            else if (rel <= 0.78) opacity = 1;
+            else opacity = (1 - rel) / 0.22;
 
-            const scale = 1.04 - rel * 0.04;
-            bgLocationRef.current.style.opacity = `${opacity}`;
-            bgLocationRef.current.style.transform = `scale(${scale})`;
-
-            const textY = (1 - Math.min(1, rel / 0.3)) * 30;
+            const textY = (1 - Math.min(1, rel / 0.25)) * 28;
             contentLocationRef.current.style.opacity = `${opacity}`;
             contentLocationRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
           } else {
-            bgLocationRef.current.style.opacity = '0';
             contentLocationRef.current.style.opacity = '0';
           }
         }
 
         // =====================================================================
-        // BEAT 3: FULL-SCREEN "03 / MENU" (0.70 -> 0.96)
+        // BEAT 3: FULL-SCREEN "03 / MENU & KITCHEN" (0.72 -> 1.00)
         // =====================================================================
-        if (bgMenuRef.current && contentMenuRef.current) {
-          if (progress >= 0.68 && progress <= 1.0) {
-            const rel = (progress - 0.68) / 0.28; // 0 to 1
+        if (contentMenuRef.current) {
+          if (progress >= 0.72 && progress <= 1.0) {
+            const rel = (progress - 0.72) / 0.28;
             let opacity = 0;
-            if (rel < 0.25) opacity = rel / 0.25;
-            else if (rel <= 0.75) opacity = 1;
-            else opacity = Math.max(0, (1 - rel) / 0.25);
+            if (rel < 0.22) opacity = rel / 0.22;
+            else if (rel <= 0.78) opacity = 1;
+            else opacity = Math.max(0, (1 - rel) / 0.22);
 
-            const scale = 1.04 - rel * 0.04;
-            bgMenuRef.current.style.opacity = `${opacity}`;
-            bgMenuRef.current.style.transform = `scale(${scale})`;
-
-            const textY = (1 - Math.min(1, rel / 0.3)) * 30;
+            const textY = (1 - Math.min(1, rel / 0.25)) * 28;
             contentMenuRef.current.style.opacity = `${opacity}`;
             contentMenuRef.current.style.transform = `translate3d(0, ${textY}px, 0)`;
           } else {
-            bgMenuRef.current.style.opacity = '0';
             contentMenuRef.current.style.opacity = '0';
           }
         }
@@ -223,7 +314,7 @@ export const Hero: React.FC<HeroProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${isReducedMotion ? 'min-h-screen' : 'h-[340vh]'} bg-[#121316] text-[#FAF8F5]`}
+      className={`relative w-full ${isReducedMotion ? 'min-h-screen' : 'h-[360vh]'} bg-[#121316] text-[#FAF8F5]`}
     >
       {/* Sticky Fullscreen Viewport Stage */}
       <div
@@ -232,69 +323,16 @@ export const Hero: React.FC<HeroProps> = ({
       >
 
         {/* =====================================================================
-            1. FULL-SCREEN BACKGROUND LAYERS (Cover 100vw x 100vh)
+            1. FULL-SCREEN CANVAS VIDEO SCRUBBING ENGINE (140 Frames)
         ====================================================================== */}
-
-        {/* BG 0: Resting Hero Official CYK Banner */}
-        <div
-          ref={bgHeroRef}
-          className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-300 ease-out will-change-[transform,opacity]"
-        >
-          <img
-            src="./images/hero/cyk-hero-banner.jpg"
-            alt="CYK Hospitalities Official Banner"
-            className="w-full h-full object-cover object-center"
-            loading="eager"
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full object-cover block"
           />
-          {/* Deep cinematic scrim: pure dark contrast, NO white fog */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/55 to-black/80 pointer-events-none" />
-        </div>
-
-        {/* BG 1: Concept Full-Screen Photo */}
-        <div
-          ref={bgConceptRef}
-          className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-300 ease-out will-change-[transform,opacity]"
-          style={{ opacity: 0 }}
-        >
-          <img
-            src="./images/hero/hero-concept-4k.webp"
-            alt="Artisanal culinary concept"
-            className="w-full h-full object-cover object-center"
-            loading="lazy"
-          />
+          {/* Deep cinematic vignette scrim for maximum text clarity */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/75 pointer-events-none" />
         </div>
-
-        {/* BG 2: Location Full-Screen Photo */}
-        <div
-          ref={bgLocationRef}
-          className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-300 ease-out will-change-[transform,opacity]"
-          style={{ opacity: 0 }}
-        >
-          <img
-            src="./images/hero/hero-location-4k.webp"
-            alt="Turnkey hospitality dining space architecture"
-            className="w-full h-full object-cover object-center"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/75 pointer-events-none" />
-        </div>
-
-        {/* BG 3: Menu & Kitchen Full-Screen Photo */}
-        <div
-          ref={bgMenuRef}
-          className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-300 ease-out will-change-[transform,opacity]"
-          style={{ opacity: 0 }}
-        >
-          <img
-            src="./images/hero/hero-menu-4k.webp"
-            alt="Chef plating at pass with precision"
-            className="w-full h-full object-cover object-[center_35%]"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/75 pointer-events-none" />
-        </div>
-
 
         {/* =====================================================================
             2. FULL-SCREEN SCENE TYPOGRAPHIC OVERLAYS
@@ -307,8 +345,14 @@ export const Hero: React.FC<HeroProps> = ({
           style={{ opacity: 0 }}
         >
           <div className="max-w-3xl space-y-3 sm:space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs text-[#C5A869] font-mono font-bold uppercase tracking-wider w-fit">
+              <span>Stage 01</span>
+              <span>•</span>
+              <span>Blueprint Formulation</span>
+            </div>
+
             <h2 className="font-display font-extrabold text-5xl sm:text-7xl lg:text-8xl text-white tracking-tight leading-[0.95] drop-shadow-lg">
-              Concept.
+              The Concept.
             </h2>
 
             <p className="text-base sm:text-xl lg:text-2xl text-[#FAF8F5]/90 font-light leading-relaxed max-w-2xl drop-shadow">
@@ -324,12 +368,18 @@ export const Hero: React.FC<HeroProps> = ({
           style={{ opacity: 0 }}
         >
           <div className="max-w-3xl space-y-3 sm:space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs text-[#C5A869] font-mono font-bold uppercase tracking-wider w-fit">
+              <span>Stage 02</span>
+              <span>•</span>
+              <span>Space Architecture</span>
+            </div>
+
             <h2 className="font-display font-extrabold text-5xl sm:text-7xl lg:text-8xl text-white tracking-tight leading-[0.95] drop-shadow-lg">
-              Location.
+              The Space.
             </h2>
 
             <p className="text-base sm:text-xl lg:text-2xl text-[#FAF8F5]/90 font-light leading-relaxed max-w-2xl drop-shadow">
-              Prime real estate sourcing across Delhi NCR, master leasing negotiations & turnkey interior execution.
+              Prime real estate sourcing across Delhi NCR, master leasing negotiations & turnkey interior architecture.
             </p>
           </div>
         </div>
@@ -341,6 +391,12 @@ export const Hero: React.FC<HeroProps> = ({
           style={{ opacity: 0 }}
         >
           <div className="max-w-3xl space-y-3 sm:space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs text-[#C5A869] font-mono font-bold uppercase tracking-wider w-fit">
+              <span>Stage 03</span>
+              <span>•</span>
+              <span>Culinary & Kitchen</span>
+            </div>
+
             <h2 className="font-display font-extrabold text-5xl sm:text-7xl lg:text-8xl text-white tracking-tight leading-[0.95] drop-shadow-lg">
               Menu & Kitchen.
             </h2>
@@ -350,7 +406,6 @@ export const Hero: React.FC<HeroProps> = ({
             </p>
           </div>
         </div>
-
 
         {/* =====================================================================
             3. BEAT 0: RESTING HERO CONTENT (Frame 1, On-Screen at Load)
