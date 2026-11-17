@@ -32,8 +32,14 @@ export const ServicesModal: React.FC<ServicesModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="relative w-full max-w-5xl h-[88vh] rounded-3xl bg-white border border-[#EAEAEA] shadow-2xl flex flex-col overflow-hidden">
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-5xl h-[88vh] rounded-3xl bg-white border border-[#EAEAEA] shadow-2xl flex flex-col overflow-hidden my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {/* Modal Header */}
         <div className="px-6 py-5 border-b border-[#EAEAEA] flex items-center justify-between bg-white">

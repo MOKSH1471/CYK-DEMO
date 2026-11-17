@@ -21,19 +21,19 @@ export interface AccordionGalleryProps {
   radius?: number;
   expandRatio?: number;
   orientation?: 'horizontal' | 'vertical';
-  tilt?: number;
   trigger?: 'hover' | 'click';
   showLabels?: boolean;
   grayscale?: boolean;
+  tilt?: number;
   className?: string;
 }
 
 const DEFAULT_ITEMS: AccordionGalleryItem[] = [
-  { image: 'https://picsum.photos/id/1015/900/1200', label: 'Canyon', link: '#' },
-  { image: 'https://picsum.photos/id/1018/900/1200', label: 'Ridgeline', link: '#' },
-  { image: 'https://picsum.photos/id/1039/900/1200', label: 'Falls', link: '#' },
-  { image: 'https://picsum.photos/id/1043/900/1200', label: 'Harbour', link: '#' },
-  { image: 'https://picsum.photos/id/1044/900/1200', label: 'Skyline', link: '#' }
+  { image: './images/gallery/gallery-risotto.jpg', label: 'Risotto', link: '#' },
+  { image: './images/gallery/gallery-croissant.jpg', label: 'Croissant', link: '#' },
+  { image: './images/gallery/gallery-taco.jpg', label: 'Taco', link: '#' },
+  { image: './images/gallery/gallery-ramen.jpg', label: 'Ramen', link: '#' },
+  { image: './images/gallery/gallery-corn-chaat.jpg', label: 'Corn Chaat', link: '#' }
 ];
 
 export const AccordionGallery: React.FC<AccordionGalleryProps> = ({
@@ -43,18 +43,17 @@ export const AccordionGallery: React.FC<AccordionGalleryProps> = ({
   overlayColor = '#121316',
   textColor = '#FAF8F5',
   height = 420,
-  gap = 10,
-  radius = 16,
+  gap = 12,
+  radius = 18,
   expandRatio = 0.48,
   orientation = 'horizontal',
-  tilt = 6,
   trigger = 'hover',
   showLabels = true,
   className = ''
 }) => {
   const count = items.length;
   const [active, setActive] = useState(Math.min(Math.max(defaultIndex, 0), count - 1));
-  const rafRef = useRef<number | null>(null);
+  const hoverTimerRef = useRef<number | null>(null);
 
   const vertical = orientation === 'vertical';
 
@@ -64,17 +63,21 @@ export const AccordionGallery: React.FC<AccordionGalleryProps> = ({
 
   useEffect(() => {
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     };
   }, []);
 
   const handleEnter = (i: number) => {
     if (trigger === 'hover' && i !== active) {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = window.setTimeout(() => {
         setActive(i);
-      });
+      }, 35);
     }
+  };
+
+  const handleLeave = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
   };
 
   const handleClick = (i: number, e: React.MouseEvent) => {
@@ -103,27 +106,21 @@ export const AccordionGallery: React.FC<AccordionGalleryProps> = ({
         '--ag-text': textColor,
         '--ag-gap': `${gap}px`,
         '--ag-radius': `${radius}px`,
-        '--ag-tilt': `${tilt}deg`,
         '--ag-grow': grow.toFixed(2),
         height: vertical ? `${Math.round(height * 1.5)}px` : `${height}px`
       } as React.CSSProperties}
       role="list"
       aria-label="Culinary gallery accordion"
+      onMouseLeave={handleLeave}
     >
       {items.map((item, i) => {
         const isActive = i === active;
-        const panelPositionClass = isActive
-          ? 'ag-panel--active'
-          : i < active
-          ? 'ag-panel--before'
-          : 'ag-panel--after';
-
         const Tag = item.link ? 'a' : 'div';
 
         return (
           <Tag
             key={i}
-            className={`ag-panel ${panelPositionClass}`}
+            className={`ag-panel ${isActive ? 'ag-panel--active' : ''}`}
             style={{ borderRadius: `${radius}px` }}
             href={item.link || undefined}
             onClick={e => handleClick(i, e)}
@@ -141,7 +138,8 @@ export const AccordionGallery: React.FC<AccordionGalleryProps> = ({
                   src={item.image}
                   alt={item.alt || item.label || ''}
                   draggable="false"
-                  loading="lazy"
+                  loading="eager"
+                  decoding="async"
                 />
               </span>
               <span className="ag-panel__overlay" aria-hidden="true" />

@@ -68,12 +68,19 @@ export const HoReCaTalks: React.FC = () => {
 
       {/* Article Reading Modal */}
       {activeArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="relative w-full max-w-xl max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-[#EAEAEA] p-6 sm:p-8 shadow-2xl space-y-4">
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setActiveArticle(null)}
+        >
+          <div
+            className="relative w-full max-w-xl max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-[#EAEAEA] p-6 sm:p-8 shadow-2xl space-y-4 my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
 
             <button
               onClick={() => setActiveArticle(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors cursor-pointer shadow-xs"
+              aria-label="Close article modal"
             >
               <X className="w-5 h-5" />
             </button>

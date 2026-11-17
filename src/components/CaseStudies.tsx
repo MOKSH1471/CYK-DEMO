@@ -15,32 +15,32 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
 
   const galleryItems: AccordionGalleryItem[] = [
     {
-      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/13.jpg',
+      image: './images/gallery/gallery-risotto.jpg',
       label: 'Prawn Risotto — Recipe Development',
       alt: 'Prawn Risotto from the CYK Test Kitchen Gallery'
     },
     {
-      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/7.jpg',
+      image: './images/gallery/gallery-croissant.jpg',
       label: 'Artisan Croissant — Boulangerie Formulation',
       alt: 'Artisan Croissant from the CYK Test Kitchen Gallery'
     },
     {
-      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/2.jpg',
+      image: './images/gallery/gallery-taco.jpg',
       label: 'Paneer Thecha Taco — Regional Fusion',
       alt: 'Paneer Thecha Taco from the CYK Test Kitchen Gallery'
     },
     {
-      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/16.jpg',
+      image: './images/gallery/gallery-ramen.jpg',
       label: 'Craft Ramen — Broth & Noodle Engineering',
       alt: 'Craft Ramen from the CYK Test Kitchen Gallery'
     },
     {
-      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/6.jpg',
+      image: './images/gallery/gallery-corn-chaat.jpg',
       label: 'Corn Chaat — Contemporary Street Food',
       alt: 'Corn Chaat from the CYK Test Kitchen Gallery'
     },
     {
-      image: 'https://www.conceptyourkitchen.com/wp-content/uploads/2025/10/10.jpg',
+      image: './images/gallery/gallery-falafel.jpg',
       label: 'Sabudana Falafel & Potato Hummus',
       alt: 'Sabudana Falafel and Potato Hummus from the CYK Test Kitchen Gallery'
     }
@@ -213,13 +213,20 @@ export const CaseStudies: React.FC<CaseStudiesProps> = ({ onEnquireProject }) =>
 
       {/* Case Study Modal */}
       {activeModalProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-[#EAEAEA] p-6 sm:p-8 shadow-2xl">
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setActiveModalProject(null)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white border border-[#EAEAEA] p-6 sm:p-8 shadow-2xl my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
 
             {/* Close Button */}
             <button
               onClick={() => setActiveModalProject(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors cursor-pointer shadow-xs"
+              aria-label="Close project modal"
             >
               <X className="w-5 h-5" />
             </button>
