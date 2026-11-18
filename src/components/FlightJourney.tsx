@@ -5,7 +5,7 @@ import Lenis from 'lenis';
 import { JOURNEY_STAGES } from '../data/mockData';
 import { 
   Lightbulb, Calculator, MapPin, Utensils, Palette, ChefHat, 
-  Megaphone, Store, ArrowRight, Quote 
+  Megaphone, Store, ArrowRight, Quote, CheckCircle2, Sparkles, Sun
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -21,194 +21,205 @@ const STAMP_ICONS: Record<string, React.ElementType> = {
   Store
 };
 
-// =============================================================================
-// CENTRAL CONFIGURATION OBJECT (Deterministic Coordinates & Layout per Stop)
-// =============================================================================
 export interface StopConfig {
   id: number;
   number: string;
-  // SVG Path Anchor Point [x, y]
   pathPoint: [number, number];
-  // Control point arriving into this stop [x, y] (for interior stops 02-07)
   controlIn?: [number, number];
-  // Outgoing control point from this stop [x, y]
   controlOut?: [number, number];
-  // Text column layout (floating on canvas, NO BOX)
-  textPosition: [number, number]; // [x, y]
+  textPosition: [number, number];
   textWidth: number;
-  // Case study photo card layout
-  cardPosition: [number, number]; // [x, y] diagonally offset
+  cardPosition: [number, number];
   cardWidth: number;
   photoHeight: number;
-  cardRotation: number;           // deg between -2 and 2
+  cardRotation: number;
   cardShadow: string;
-  // Optimal camera center framing both text + card + plane
   cameraAnchor: [number, number];
+  fixCode: string;
+  airportType: string;
+  telemetry: string;
 }
 
 export const FLIGHT_CONFIG = {
   world: {
-    baseW: 5600,
-    baseH: 7400,
+    baseW: 6000,
+    baseH: 12400,
     padding: 800
   },
   refResolution: {
     w: 1440,
     h: 900
   },
-  scrollVhPerStop: 1.15,
+  scrollVhPerStop: 1.35,
   scrub: true,
   parallax: {
-    far: 0.25,
-    mid: 0.55,
+    far: 0.35,
+    mid: 0.65,
     near: 1.25
   },
   plane: {
-    rotationLerp: 0.22,
-    scale: 0.24
+    rotationLerp: 0.75,
+    scale: 0.44
   },
-  trail: {
-    faintOpacity: 0.18,
-    brightOpacity: 0.85,
-    leadAhead: 0.025
-  },
-  cameraDamping: 0.12, // Lerp factor for buttery camera gliding
+  cameraDamping: 0.22,
   mobileBreakpoint: 768,
 
-  // ---------------------------------------------------------------------------
-  // ORGANIC 8-STOP WAYPOINTS & LAYOUT (Uneven spacing, diagonal & vertical sections)
-  // ---------------------------------------------------------------------------
+  // 8 Dedicated Stops: Equal 1400px vertical steps, comfortable clearance below floating nav
   stops: [
-    // Stop 01: "The Idea" — upper left-center
+    // Stop 01: The Idea (Left)
     {
       id: 0,
-      number: "01",
-      pathPoint: [1400, 700],
-      controlOut: [2000, 800],
-      textPosition: [1640, 480],
-      textWidth: 440,
-      cardPosition: [2140, 520],
-      cardWidth: 430,
-      photoHeight: 210,
-      cardRotation: -1.3,
-      cardShadow: "shadow-xl",
-      cameraAnchor: [1880, 700]
+      number: '01',
+      cameraAnchor: [1000, 950],
+      textPosition: [360, 720],
+      textWidth: 540,
+      cardPosition: [1000, 740],
+      cardWidth: 490,
+      photoHeight: 240,
+      cardRotation: -1.5,
+      cardShadow: 'shadow-2xl',
+      pathPoint: [1680, 870],
+      controlOut: [2500, 1170],
+      fixCode: 'ORIGIN: CYK-01',
+      airportType: 'CONCEPT AIRFIELD',
+      telemetry: 'RUNWAY 01L · ELEV 1,200 FT'
     },
-    // Stop 02: "The Numbers" — upper right (wide lazy diagonal sprint)
+    // Stop 02: The Numbers (Right) - 1400px below Stop 01
     {
       id: 1,
-      number: "02",
-      pathPoint: [3600, 1400],
-      controlIn: [3100, 1250],
-      controlOut: [4100, 1550], // Mirrored: 2*(3600, 1400) - (3100, 1250)
-      textPosition: [2460, 1180],
-      textWidth: 440,
-      cardPosition: [2960, 1140],
-      cardWidth: 420,
-      photoHeight: 200,
-      cardRotation: 1.7,
-      cardShadow: "shadow-2xl",
-      cameraAnchor: [3050, 1400]
+      number: '02',
+      cameraAnchor: [4100, 2350],
+      textPosition: [3520, 2120],
+      textWidth: 540,
+      cardPosition: [4160, 2140],
+      cardWidth: 490,
+      photoHeight: 240,
+      cardRotation: 1.8,
+      cardShadow: 'shadow-2xl',
+      pathPoint: [3200, 2270],
+      controlIn: [2800, 1970],
+      controlOut: [3600, 2570],
+      fixCode: 'WAYPOINT: CYK-02',
+      airportType: 'FEASIBILITY AERODROME',
+      telemetry: 'RUNWAY 02R · ELEV 1,850 FT'
     },
-    // Stop 03: "The Place" — mid left-center (wide descending turnaround sweep)
+    // Stop 03: The Place (Left) - 1400px below Stop 02
     {
       id: 2,
-      number: "03",
-      pathPoint: [2000, 2400],
-      controlIn: [2400, 2300],
-      controlOut: [1600, 2500], // Mirrored: 2*(2000, 2400) - (2400, 2300)
-      textPosition: [2240, 2180],
-      textWidth: 430,
-      cardPosition: [2730, 2140],
-      cardWidth: 450,
-      photoHeight: 220,
-      cardRotation: -0.8,
-      cardShadow: "shadow-xl",
-      cameraAnchor: [2480, 2400]
+      number: '03',
+      cameraAnchor: [1000, 3750],
+      textPosition: [360, 3520],
+      textWidth: 540,
+      cardPosition: [1000, 3540],
+      cardWidth: 490,
+      photoHeight: 240,
+      cardRotation: -1.2,
+      cardShadow: 'shadow-2xl',
+      pathPoint: [1680, 3670],
+      controlIn: [2100, 3370],
+      controlOut: [1260, 3970],
+      fixCode: 'WAYPOINT: CYK-03',
+      airportType: 'SITE ACQUISITION RADAR',
+      telemetry: 'RUNWAY 03 · ELEV 2,100 FT'
     },
-    // Stop 04: "The Menu & Kitchen" — mid left (near-vertical plunge!)
+    // Stop 04: The Menu & Kitchen (Right) - 1400px below Stop 03
     {
       id: 3,
-      number: "04",
-      pathPoint: [1500, 3300],
-      controlIn: [1450, 2900],
-      controlOut: [1550, 3700], // Mirrored: 2*(1500, 3300) - (1450, 2900)
-      textPosition: [1740, 3080],
-      textWidth: 440,
-      cardPosition: [2240, 3130],
-      cardWidth: 410,
-      photoHeight: 200,
-      cardRotation: 1.8,
-      cardShadow: "shadow-xl",
-      cameraAnchor: [2000, 3300]
+      number: '04',
+      cameraAnchor: [4100, 5150],
+      textPosition: [3520, 4920],
+      textWidth: 540,
+      cardPosition: [4160, 4940],
+      cardWidth: 490,
+      photoHeight: 240,
+      cardRotation: 1.5,
+      cardShadow: 'shadow-2xl',
+      pathPoint: [3200, 5070],
+      controlIn: [2800, 4770],
+      controlOut: [3600, 5370],
+      fixCode: 'WAYPOINT: CYK-04',
+      airportType: 'CULINARY LAB TERMINAL',
+      telemetry: 'RUNWAY 04L · ELEV 2,450 FT'
     },
-    // Stop 05: "The Brand & Space" — mid right (fast dynamic eastward sweep)
+    // Stop 05: The Brand & Space (Left) - 1400px below Stop 04
     {
       id: 4,
-      number: "05",
-      pathPoint: [3500, 4100],
-      controlIn: [3000, 4050],
-      controlOut: [4000, 4150], // Mirrored: 2*(3500, 4100) - (3000, 4050)
-      textPosition: [2360, 3880],
-      textWidth: 440,
-      cardPosition: [2860, 3840],
-      cardWidth: 450,
-      photoHeight: 230,
+      number: '05',
+      cameraAnchor: [1000, 6550],
+      textPosition: [360, 6320],
+      textWidth: 540,
+      cardPosition: [1000, 6340],
+      cardWidth: 490,
+      photoHeight: 240,
       cardRotation: -1.6,
-      cardShadow: "shadow-2xl",
-      cameraAnchor: [2950, 4100]
+      cardShadow: 'shadow-2xl',
+      pathPoint: [1680, 6470],
+      controlIn: [2100, 6170],
+      controlOut: [1260, 6770],
+      fixCode: 'WAYPOINT: CYK-05',
+      airportType: 'BRAND ARCHITECTURE BASE',
+      telemetry: 'RUNWAY 05R · ELEV 2,900 FT'
     },
-    // Stop 06: "The Team" — lower center (gentle hook)
+    // Stop 06: The Team (Right) - 1400px below Stop 05
     {
       id: 5,
-      number: "06",
-      pathPoint: [2400, 4900],
-      controlIn: [2800, 4800],
-      controlOut: [2000, 5000], // Mirrored: 2*(2400, 4900) - (2800, 4800)
-      textPosition: [2640, 4680],
-      textWidth: 430,
-      cardPosition: [3130, 4650],
-      cardWidth: 410,
-      photoHeight: 195,
-      cardRotation: 0.9,
-      cardShadow: "shadow-lg",
-      cameraAnchor: [2880, 4900]
+      number: '06',
+      cameraAnchor: [4100, 7950],
+      textPosition: [3520, 7720],
+      textWidth: 540,
+      cardPosition: [4160, 7740],
+      cardWidth: 490,
+      photoHeight: 240,
+      cardRotation: 1.3,
+      cardShadow: 'shadow-2xl',
+      pathPoint: [3200, 7870],
+      controlIn: [2800, 7570],
+      controlOut: [3600, 8170],
+      fixCode: 'WAYPOINT: CYK-06',
+      airportType: 'CREW TALENT AIRBASE',
+      telemetry: 'RUNWAY 06 · ELEV 3,250 FT'
     },
-    // Stop 07: "The Launch" — lower left (descending turnaround)
+    // Stop 07: The Launch (Left) - 1400px below Stop 06
     {
       id: 6,
-      number: "07",
-      pathPoint: [1300, 5700],
-      controlIn: [1350, 5350],
-      controlOut: [1250, 6050], // Mirrored: 2*(1300, 5700) - (1350, 5350)
-      textPosition: [1540, 5480],
-      textWidth: 440,
-      cardPosition: [2040, 5520],
-      cardWidth: 430,
-      photoHeight: 210,
-      cardRotation: -1.2,
-      cardShadow: "shadow-xl",
-      cameraAnchor: [1800, 5700]
+      number: '07',
+      cameraAnchor: [1000, 9350],
+      textPosition: [360, 9120],
+      textWidth: 540,
+      cardPosition: [1000, 9140],
+      cardWidth: 490,
+      photoHeight: 240,
+      cardRotation: -1.0,
+      cardShadow: 'shadow-2xl',
+      pathPoint: [1680, 9270],
+      controlIn: [2100, 8970],
+      controlOut: [1260, 9570],
+      fixCode: 'WAYPOINT: CYK-07',
+      airportType: 'MAIDEN LAUNCH STRIP',
+      telemetry: 'RUNWAY 07R · ELEV 3,800 FT'
     },
-    // Stop 08: "The Expansion" — bottom right (grand finale arrival)
+    // Stop 08: The Expansion (Right) - 1400px below Stop 07
     {
       id: 7,
-      number: "08",
-      pathPoint: [3800, 6500],
-      controlIn: [3100, 6450],
-      textPosition: [2650, 6280],
-      textWidth: 450,
-      cardPosition: [3170, 6240],
-      cardWidth: 460,
-      photoHeight: 235,
-      cardRotation: 1.5,
-      cardShadow: "shadow-2xl",
-      cameraAnchor: [3250, 6500]
+      number: '08',
+      cameraAnchor: [4100, 10750],
+      textPosition: [3520, 10520],
+      textWidth: 540,
+      cardPosition: [4160, 10540],
+      cardWidth: 490,
+      photoHeight: 250,
+      cardRotation: 1.6,
+      cardShadow: 'shadow-2xl',
+      pathPoint: [3200, 10670],
+      controlIn: [2800, 10370],
+      fixCode: 'DESTINATION: CYK-08',
+      airportType: 'NATIONAL EXPANSION AERODROME',
+      telemetry: 'TERMINAL MAIN · FINAL ARRIVAL'
     }
   ] as StopConfig[]
 };
 
-// Builder: builds continuous C1 SVG path string with mirrored tangents
+// Continuous C1 SVG path string with smooth tangents
 function buildOrganicPathD(stops: StopConfig[]): string {
   if (stops.length < 2) return '';
   let d = `M ${stops[0].pathPoint[0]} ${stops[0].pathPoint[1]}`;
@@ -230,22 +241,105 @@ function buildOrganicPathD(stops: StopConfig[]): string {
   return d;
 }
 
-// Shortest angle difference handling ±180° wrap
 function shortestAngleDelta(target: number, current: number): number {
   return ((((target - current + 540) % 360) - 180));
 }
 
-// Cubic smoothstep easing
-function smoothstep(min: number, max: number, value: number): number {
+function smootherstep(min: number, max: number, value: number): number {
   const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  return x * x * (3 - 2 * x);
+  return x * x * x * (x * (x * 6 - 15) + 10);
 }
+
+// Continuous cloud scenery across the journey
+const SKY_CLOUDS = [
+  // Upper sky (Stops 1-2 & transition)
+  { x: 300, y: 350, scale: 1.4, opacity: 0.75 },
+  { x: 1800, y: 550, scale: 1.1, opacity: 0.65 },
+  { x: 2350, y: 1250, scale: 1.35, opacity: 0.80 },
+  { x: 2850, y: 1650, scale: 1.45, opacity: 0.85 },
+  { x: 3200, y: 400, scale: 1.5, opacity: 0.70 },
+  { x: 4400, y: 750, scale: 1.2, opacity: 0.60 },
+  { x: 1100, y: 1200, scale: 1.3, opacity: 0.65 },
+  { x: 4200, y: 1700, scale: 1.3, opacity: 0.65 },
+  { x: 500, y: 2000, scale: 1.2, opacity: 0.60 },
+
+  // Mid-upper sky (Stops 2-4 & transition corridors)
+  { x: 2600, y: 2700, scale: 1.5, opacity: 0.80 },
+  { x: 2150, y: 3050, scale: 1.35, opacity: 0.75 },
+  { x: 1900, y: 2400, scale: 1.5, opacity: 0.70 },
+  { x: 3600, y: 2750, scale: 1.4, opacity: 0.75 },
+  { x: 800, y: 3100, scale: 1.3, opacity: 0.65 },
+  { x: 2400, y: 4250, scale: 1.45, opacity: 0.80 },
+  { x: 2800, y: 4650, scale: 1.55, opacity: 0.85 },
+  { x: 4300, y: 3800, scale: 1.2, opacity: 0.60 },
+  { x: 1400, y: 4200, scale: 1.5, opacity: 0.75 },
+  { x: 4700, y: 4900, scale: 1.4, opacity: 0.70 },
+
+  // Mid-lower sky (Stops 4-6 & transition corridors)
+  { x: 600, y: 5300, scale: 1.3, opacity: 0.65 },
+  { x: 2600, y: 5550, scale: 1.4, opacity: 0.80 },
+  { x: 2100, y: 5950, scale: 1.5, opacity: 0.85 },
+  { x: 3900, y: 6000, scale: 1.4, opacity: 0.70 },
+  { x: 1200, y: 6400, scale: 1.5, opacity: 0.70 },
+  { x: 2400, y: 7050, scale: 1.45, opacity: 0.80 },
+  { x: 2850, y: 7450, scale: 1.5, opacity: 0.85 },
+  { x: 4500, y: 7100, scale: 1.5, opacity: 0.75 },
+  { x: 700, y: 7500, scale: 1.2, opacity: 0.60 },
+
+  // Deep sky (Stops 6-8 & transition corridors)
+  { x: 4100, y: 8200, scale: 1.4, opacity: 0.75 },
+  { x: 2550, y: 8350, scale: 1.45, opacity: 0.80 },
+  { x: 2100, y: 8750, scale: 1.5, opacity: 0.85 },
+  { x: 1500, y: 8600, scale: 1.5, opacity: 0.70 },
+  { x: 4800, y: 9300, scale: 1.4, opacity: 0.70 },
+  { x: 2400, y: 9750, scale: 1.4, opacity: 0.80 },
+  { x: 2850, y: 10150, scale: 1.5, opacity: 0.85 },
+  { x: 800, y: 9700, scale: 1.3, opacity: 0.65 },
+  { x: 4200, y: 10400, scale: 1.4, opacity: 0.70 },
+  { x: 1600, y: 10800, scale: 1.5, opacity: 0.70 },
+  { x: 3400, y: 11200, scale: 1.3, opacity: 0.65 },
+  { x: 2200, y: 11700, scale: 1.6, opacity: 0.75 }
+];
 
 interface FlightJourneyProps {
   onConsultStage: (stageIndex: number) => void;
   onOpenServiceModal: (stageIndex: number) => void;
   stopCount?: number;
 }
+
+
+// -----------------------------------------------------------------------------
+// TRANSITION ATMOSPHERE ELEMENTS (Rendered directly in world coordinate space)
+// -----------------------------------------------------------------------------
+const WIND_SWIRLS = [
+  { x: 2200, y: 1450, scale: 1.25, rotation: 12, opacity: 0.75 },
+  { x: 2750, y: 1750, scale: 1.1, rotation: -10, opacity: 0.70 },
+  { x: 2700, y: 2800, scale: 1.3, rotation: -20, opacity: 0.75 },
+  { x: 2100, y: 3150, scale: 1.1, rotation: 18, opacity: 0.70 },
+  { x: 2300, y: 4200, scale: 1.25, rotation: 8, opacity: 0.75 },
+  { x: 2850, y: 4550, scale: 1.15, rotation: -14, opacity: 0.70 },
+  { x: 2700, y: 5600, scale: 1.3, rotation: -18, opacity: 0.75 },
+  { x: 2150, y: 5950, scale: 1.1, rotation: 16, opacity: 0.70 },
+  { x: 2350, y: 7000, scale: 1.25, rotation: 14, opacity: 0.75 },
+  { x: 2800, y: 7350, scale: 1.15, rotation: -12, opacity: 0.70 },
+  { x: 2750, y: 8400, scale: 1.3, rotation: -22, opacity: 0.75 },
+  { x: 2100, y: 8800, scale: 1.1, rotation: 18, opacity: 0.70 },
+  { x: 2350, y: 9800, scale: 1.25, rotation: 14, opacity: 0.75 },
+  { x: 2800, y: 10150, scale: 1.15, rotation: -10, opacity: 0.70 }
+];
+
+const BIRD_FLOCKS = [
+  { x: 2250, y: 1350, scale: 1.35, rotation: -8 },
+  { x: 2650, y: 4250, scale: 1.3, rotation: 6 },
+  { x: 2200, y: 7100, scale: 1.35, rotation: -6 },
+  { x: 2600, y: 9900, scale: 1.3, rotation: 8 }
+];
+
+const HOT_AIR_BALLOONS = [
+  { x: 2350, y: 2950, scale: 1.45 },
+  { x: 2450, y: 5750, scale: 1.38 },
+  { x: 2500, y: 8600, scale: 1.45 }
+];
 
 export const FlightJourney: React.FC<FlightJourneyProps> = ({
   onConsultStage,
@@ -256,10 +350,9 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
   const pinWrapperRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
 
-  // Parallax Siblings (all sit at z-5 to z-15, BELOW World z-30)
+  // Parallax layers
   const farLayerRef = useRef<HTMLDivElement>(null);
   const midLayerRef = useRef<HTMLDivElement>(null);
-  const nearLayerRef = useRef<HTMLDivElement>(null);
 
   // SVG Elements
   const pathRef = useRef<SVGPathElement>(null);
@@ -268,15 +361,14 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
 
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-
   const smoothedAngleRef = useRef<number>(0);
-  
-  // Damped Camera Coordinates
+
+  // Initialized to Stop 01 Camera Anchor with +35px navbar safety clearance
   const cameraStateRef = useRef({
-    currentX: 0,
-    currentY: 0,
-    targetX: 0,
-    targetY: 0
+    currentX: -1000 * 0.9 + 1440 / 2,
+    currentY: -950 * 0.9 + (900 + 70) / 2,
+    targetX: -1000 * 0.9 + 1440 / 2,
+    targetY: -950 * 0.9 + (900 + 70) / 2
   });
 
   const activeCount = Math.max(2, Math.min(8, stopCount));
@@ -284,7 +376,6 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
   const activeStages = useMemo(() => JOURNEY_STAGES.slice(0, activeCount), [activeCount]);
   const activePathD = useMemo(() => buildOrganicPathD(activeConfigs), [activeConfigs]);
 
-  // Motion preference & resize
   useEffect(() => {
     const mqMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     setIsReducedMotion(mqMotion.matches);
@@ -329,7 +420,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
     };
   }, [isReducedMotion]);
 
-  // Continuous Camera Damping via GSAP Ticker
+  // Continuous Camera Damping
   useEffect(() => {
     if (isReducedMotion) return;
 
@@ -342,9 +433,9 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
 
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const scaleW = vw / FLIGHT_CONFIG.refResolution.w;
-      const scaleH = (vh - 80) / 720;
-      const s = Math.max(0.60, Math.min(1.05, Math.min(scaleW, scaleH)));
+      const scaleW = vw / 1440;
+      const scaleH = (vh - 80) / 620;
+      const s = Math.max(0.85, Math.min(1.15, Math.min(scaleW, scaleH)));
 
       if (worldRef.current) {
         worldRef.current.style.transform = `translate3d(${cam.currentX}px, ${cam.currentY}px, 0) scale(${s})`;
@@ -352,15 +443,12 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
       }
 
       if (farLayerRef.current) {
-        farLayerRef.current.style.transform = `translate3d(${cam.currentX * FLIGHT_CONFIG.parallax.far}px, ${cam.currentY * FLIGHT_CONFIG.parallax.far}px, 0)`;
+        farLayerRef.current.style.transform = `translate3d(${cam.currentX * FLIGHT_CONFIG.parallax.far}px, ${cam.currentY * FLIGHT_CONFIG.parallax.far}px, 0) scale(${s})`;
+        farLayerRef.current.style.transformOrigin = '0 0';
       }
       if (midLayerRef.current) {
-        midLayerRef.current.style.transform = `translate3d(${cam.currentX * FLIGHT_CONFIG.parallax.mid}px, ${cam.currentY * FLIGHT_CONFIG.parallax.mid}px, 0)`;
-      }
-      if (nearLayerRef.current) {
-        const nearX = (cam.currentX * FLIGHT_CONFIG.parallax.near) % 900;
-        const nearY = (cam.currentY * FLIGHT_CONFIG.parallax.near) % 700;
-        nearLayerRef.current.style.transform = `translate3d(${nearX}px, ${nearY}px, 0)`;
+        midLayerRef.current.style.transform = `translate3d(${cam.currentX * FLIGHT_CONFIG.parallax.mid}px, ${cam.currentY * FLIGHT_CONFIG.parallax.mid}px, 0) scale(${s})`;
+        midLayerRef.current.style.transformOrigin = '0 0';
       }
     };
 
@@ -385,18 +473,66 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
 
     const totalSegments = activeCount - 1;
 
-    // Viewport responsive scale factor
+    // Exact cumulative stop distance sampling
+    const stopDistances: number[] = [0];
+    for (let i = 1; i < activeConfigs.length; i++) {
+      const targetPoint = activeConfigs[i].pathPoint;
+      let closestDist = (i / totalSegments) * totalPathLen;
+      let minDistanceSq = Infinity;
+
+      const startScan = Math.max(0, stopDistances[i - 1]);
+      const endScan = totalPathLen;
+      const step = 20;
+
+      for (let d = startScan; d <= endScan; d += step) {
+        const pt = pathEl.getPointAtLength(d);
+        const dx = pt.x - targetPoint[0];
+        const dy = pt.y - targetPoint[1];
+        const dSq = dx * dx + dy * dy;
+        if (dSq < minDistanceSq) {
+          minDistanceSq = dSq;
+          closestDist = d;
+        }
+      }
+
+      const fineStart = Math.max(0, closestDist - 25);
+      const fineEnd = Math.min(totalPathLen, closestDist + 25);
+      for (let d = fineStart; d <= fineEnd; d += 1) {
+        const pt = pathEl.getPointAtLength(d);
+        const dx = pt.x - targetPoint[0];
+        const dy = pt.y - targetPoint[1];
+        const dSq = dx * dx + dy * dy;
+        if (dSq < minDistanceSq) {
+          minDistanceSq = dSq;
+          closestDist = d;
+        }
+      }
+      stopDistances.push(closestDist);
+    }
+    stopDistances[stopDistances.length - 1] = totalPathLen;
+
+    // Set initial plane position & correct orientation immediately on mount
+    const pt0 = pathEl.getPointAtLength(0);
+    const ptAhead0 = pathEl.getPointAtLength(Math.min(totalPathLen, 15));
+    const initDeg = Math.atan2(ptAhead0.y - pt0.y, ptAhead0.x - pt0.x) * (180 / Math.PI) + 90;
+    smoothedAngleRef.current = initDeg;
+    if (planeRef.current) {
+      planeRef.current.setAttribute(
+        'transform',
+        `translate(${pt0.x}, ${pt0.y}) rotate(${initDeg})`
+      );
+    }
+
     const getScaleFactor = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const scaleW = vw / FLIGHT_CONFIG.refResolution.w;
-      const scaleH = (vh - 80) / 720;
-      return Math.max(0.60, Math.min(1.05, Math.min(scaleW, scaleH)));
+      const scaleW = vw / 1440;
+      const scaleH = (vh - 80) / 620;
+      return Math.max(0.85, Math.min(1.15, Math.min(scaleW, scaleH)));
     };
 
     let scaleFactor = getScaleFactor();
 
-    // Master ScrollTrigger
     const trigger = ScrollTrigger.create({
       trigger: containerRef.current,
       start: 'top top',
@@ -411,64 +547,57 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
       onUpdate: (self) => {
         const rawScroll = self.progress;
 
-        // Smooth piecewise remap with smoothstep easing (no step changes in speed)
-        let flightProgress = 0;
-        let isDwell = false;
-        let currentStopIdx = 0;
+        const startHold = 0.04;
+        const endHold = 0.06;
+        const dwellRatio = 0.20;
 
-        const startHold = 0.045;
-        const endHold = 0.055;
-        const dwellHalf = 0.024;
+        let segIdx = 0;
+        let localFlight = 0;
 
         if (rawScroll <= startHold) {
-          flightProgress = 0;
-          isDwell = true;
-          currentStopIdx = 0;
+          segIdx = 0;
+          localFlight = 0;
         } else if (rawScroll >= 1.0 - endHold) {
-          flightProgress = 1.0;
-          isDwell = true;
-          currentStopIdx = activeCount - 1;
+          segIdx = totalSegments - 1;
+          localFlight = 1;
         } else {
-          // Remap interior scroll span smoothly
           const effectiveScroll = (rawScroll - startHold) / (1.0 - startHold - endHold);
-          const nominalStopPos = effectiveScroll * totalSegments;
-          const nearestStop = Math.round(nominalStopPos);
-          const distToStop = Math.abs(nominalStopPos - nearestStop);
+          const scaled = effectiveScroll * totalSegments;
+          segIdx = Math.min(totalSegments - 1, Math.max(0, Math.floor(scaled)));
+          const tau = Math.max(0, Math.min(1, scaled - segIdx));
 
-          if (distToStop < dwellHalf * totalSegments) {
-            flightProgress = nearestStop / totalSegments;
-            isDwell = true;
-            currentStopIdx = nearestStop;
+          if (tau < dwellRatio) {
+            localFlight = 0;
+          } else if (tau > 1 - dwellRatio) {
+            localFlight = 1;
           } else {
-            // Smooth transit curve
-            flightProgress = nominalStopPos / totalSegments;
-            isDwell = false;
-            currentStopIdx = Math.floor(nominalStopPos);
+            localFlight = smootherstep(dwellRatio, 1 - dwellRatio, tau);
           }
         }
 
-        const clampedProgress = Math.max(0, Math.min(1, flightProgress));
-        const currentDist = clampedProgress * totalPathLen;
+        const dStart = stopDistances[segIdx] || 0;
+        const dEnd = stopDistances[segIdx + 1] || totalPathLen;
+        const currentDist = dStart + (dEnd - dStart) * localFlight;
 
-        // 1. Trail Progressive Reveal
+        // Trail Progressive Reveal: strictly behind plane
         if (trailMaskPathRef.current) {
-          const leadAhead = Math.min(1, clampedProgress + FLIGHT_CONFIG.trail.leadAhead);
-          trailMaskPathRef.current.style.strokeDashoffset = `${totalPathLen * (1 - leadAhead)}`;
+          const revealedLen = Math.max(0, Math.min(totalPathLen, currentDist));
+          trailMaskPathRef.current.style.strokeDashoffset = `${totalPathLen - revealedLen}`;
         }
 
-        // 2. Sample plane position & banking angle
+        // Sample plane position & banking angle with +90 deg offset
         const pt = pathEl.getPointAtLength(currentDist);
-        const sampleOffset = 8;
-        const pNext = pathEl.getPointAtLength(Math.min(totalPathLen, currentDist + sampleOffset));
-        const pPrev = pathEl.getPointAtLength(Math.max(0, currentDist - sampleOffset));
+        const lookAheadDist = Math.min(totalPathLen, currentDist + 12);
+        const lookBehindDist = Math.max(0, currentDist - 12);
+        const ptAhead = pathEl.getPointAtLength(lookAheadDist);
+        const ptBehind = pathEl.getPointAtLength(lookBehindDist);
 
-        const dx = pNext.x - pPrev.x;
-        const dy = pNext.y - pPrev.y;
-        const rawRad = Math.atan2(dy, dx);
-        const rawDeg = (rawRad * 180) / Math.PI + 90;
+        const dx = ptAhead.x - ptBehind.x;
+        const dy = ptAhead.y - ptBehind.y;
+        const targetDeg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
 
-        const angleDiff = shortestAngleDelta(rawDeg, smoothedAngleRef.current);
-        smoothedAngleRef.current += angleDiff * FLIGHT_CONFIG.plane.rotationLerp;
+        const deltaDeg = shortestAngleDelta(targetDeg, smoothedAngleRef.current);
+        smoothedAngleRef.current += deltaDeg * FLIGHT_CONFIG.plane.rotationLerp;
 
         if (planeRef.current) {
           planeRef.current.setAttribute(
@@ -477,205 +606,184 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
           );
         }
 
-        // 3. Camera Target using Camera Anchors from Stop Configs
+        // Camera Lockstep Interpolation
+        const currStop = activeConfigs[segIdx];
+        const nextStop = activeConfigs[Math.min(activeConfigs.length - 1, segIdx + 1)];
+
+        const anchorX = currStop.cameraAnchor[0] + (nextStop.cameraAnchor[0] - currStop.cameraAnchor[0]) * localFlight;
+        const anchorY = currStop.cameraAnchor[1] + (nextStop.cameraAnchor[1] - currStop.cameraAnchor[1]) * localFlight;
+
         const vw = window.innerWidth;
         const vh = window.innerHeight;
 
-        const segIdx = Math.min(totalSegments - 1, Math.max(0, Math.floor(clampedProgress * totalSegments)));
-        const segT = (clampedProgress * totalSegments) - segIdx;
-        const currAnchor = activeConfigs[segIdx].cameraAnchor;
-        const nextAnchor = activeConfigs[segIdx + 1]?.cameraAnchor || currAnchor;
-
-        // Smooth cubic blend between stop camera anchors
-        const smoothT = smoothstep(0, 1, segT);
-        const anchorX = currAnchor[0] + (nextAnchor[0] - currAnchor[0]) * smoothT;
-        const anchorY = currAnchor[1] + (nextAnchor[1] - currAnchor[1]) * smoothT;
-
-        // Vertical centering in the clear zone below fixed nav (80px)
-        const navHeight = 80 * scaleFactor;
-        const availableHeight = vh - navHeight;
-        const camCenterY = navHeight + (availableHeight / 2);
-
-        // Update Target (Damped follow lerps smoothly toward this)
+        // +70px vertical offset ensures comfortable clearance below floating nav
+        const topNavOffset = 70;
         cameraStateRef.current.targetX = -anchorX * scaleFactor + vw / 2;
-        cameraStateRef.current.targetY = -anchorY * scaleFactor + camCenterY;
-
-        // Near clouds fade out during dwell so text is 100% crisp
-        if (nearLayerRef.current) {
-          nearLayerRef.current.style.opacity = isDwell ? '0' : '0.40';
-        }
-
-        // Subtle scale entrance for content (finishes well before dwell)
-        activeConfigs.forEach((cfg, idx) => {
-          const stopNominal = idx / totalSegments;
-          const dist = Math.abs(clampedProgress - stopNominal);
-          const stopEl = document.getElementById(`world-stop-${idx}`);
-          if (!stopEl) return;
-          const scale = dist < 0.14 ? 0.96 + 0.04 * (1 - dist / 0.14) : 0.96;
-          stopEl.style.transform = `scale(${Math.min(1.0, scale)})`;
-        });
+        cameraStateRef.current.targetY = -anchorY * scaleFactor + (vh + topNavOffset) / 2;
       }
     });
-
-    if (document.fonts) {
-      document.fonts.ready.then(() => {
-        ScrollTrigger.refresh();
-      });
-    }
 
     return () => {
       trigger.kill();
     };
-  }, [isReducedMotion, activeCount, activeConfigs, activeStages]);
+  }, [activeCount, activeConfigs, isReducedMotion]);
 
-  // ===========================================================================
-  // REDUCED MOTION STATIC FALLBACK
-  // ===========================================================================
   if (isReducedMotion) {
     return (
-      <section id="journey" className="relative bg-[#FAF8F5] py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto space-y-16">
-          {activeStages.map((stage, idx) => {
-            const Stamp = STAMP_ICONS[stage.stampIcon] || Lightbulb;
-            const isEven = idx % 2 === 0;
-            return (
-              <div 
-                key={stage.id} 
-                className="grid md:grid-cols-12 gap-8 items-start py-8 border-b border-[#EAEAEA]"
-              >
-                <div className={`md:col-span-6 ${isEven ? 'md:order-1' : 'md:order-2'}`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="font-mono text-3xl font-extrabold text-[#847445]">{stage.number}</span>
-                    <div className="w-10 h-10 rounded-xl bg-[#847445]/10 text-[#847445] flex items-center justify-center shrink-0 border border-[#847445]/20">
-                      <Stamp className="w-5 h-5 stroke-[2.2]" />
-                    </div>
-                    <h3 className="font-display font-black text-2xl text-[#14181F]">{stage.title}</h3>
-                  </div>
-                  <p className="text-sm font-serif italic text-slate-500 mb-3">"{stage.tagline}"</p>
-                  <p className="text-slate-600 text-sm leading-relaxed mb-4">{stage.description}</p>
-                  <button
-                    onClick={() => onConsultStage(stage.id)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#847445] text-white text-xs font-bold"
-                  >
-                    <span>Consult on {stage.title}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className={`md:col-span-6 ${isEven ? 'md:order-2' : 'md:order-1'}`}>
-                  <div className="rounded-2xl overflow-hidden border border-[#EAEAEA] bg-white p-4 shadow-sm">
-                    <img src={stage.proofProject.image} alt={stage.proofProject.name} className="w-full h-52 object-cover rounded-xl mb-3" />
-                    <div className="text-xs font-bold text-slate-900">{stage.proofProject.name}</div>
-                    <div className="text-xs text-slate-500">{stage.proofProject.caption}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      <section className="py-24 px-6 max-w-7xl mx-auto">
+        <div className="space-y-16">
+          {activeStages.map((stage) => (
+            <div key={stage.id} className="p-8 bg-white rounded-3xl border border-slate-200 shadow-sm">
+              <div className="text-sm font-mono text-[#847445] font-bold">STAGE {stage.number}</div>
+              <h3 className="text-2xl font-bold text-slate-900 mt-1">{stage.title}</h3>
+              <p className="text-slate-600 mt-2">{stage.description}</p>
+            </div>
+          ))}
         </div>
       </section>
     );
   }
 
-  // ===========================================================================
-  // INTERACTIVE FLIGHT EXPERIENCE
-  // ===========================================================================
   return (
     <section
       id="journey"
       ref={containerRef}
-      className="relative w-full bg-[#FAF8F5] text-[#14181F]"
+      className="relative w-full bg-[#FAF8F5] text-[#14181F] overflow-hidden"
     >
-      {/* PINNED VIEWPORT (100vw × 100vh) */}
+      {/* PINNED VIEWPORT */}
       <div
         ref={pinWrapperRef}
         className="relative w-full h-screen overflow-hidden flex items-center justify-center"
       >
+        {/* ATMOSPHERIC GLOWS */}
+        <div className="absolute top-1/4 left-1/4 w-[750px] h-[750px] rounded-full bg-[#847445]/5 blur-[160px] pointer-events-none z-0" />
+        <div className="absolute bottom-1/3 right-1/4 w-[850px] h-[850px] rounded-full bg-[#C5A869]/8 blur-[180px] pointer-events-none z-0" />
+
         {/* -------------------------------------------------------------------
-            1. FAR LAYER (z-5, BELOW World z-30)
+            1. FAR LAYER (z-5, Golden Sun, Clouds, Migrating Birds, Hot Air Balloons)
         -------------------------------------------------------------------- */}
         <div
           ref={farLayerRef}
-          className="absolute inset-0 pointer-events-none z-5 overflow-hidden"
-          style={{ willChange: 'transform' }}
+          className="absolute top-0 left-0 pointer-events-none z-5"
+          style={{
+            width: `${FLIGHT_CONFIG.world.baseW}px`,
+            height: `${FLIGHT_CONFIG.world.baseH}px`,
+            willChange: 'transform'
+          }}
         >
-          <div className="absolute top-1/4 left-1/4 w-[650px] h-[650px] rounded-full bg-[#847445]/6 blur-[150px]" />
-          <div className="absolute bottom-1/3 right-1/4 w-[750px] h-[750px] rounded-full bg-[#C5A869]/8 blur-[160px]" />
-          <svg className="w-full h-full opacity-35" viewBox="0 0 1440 900" fill="none">
-            <path
-              d="M120 320 C140 280, 200 270, 240 300 C270 270, 330 270, 360 310 C390 300, 440 330, 430 370 C440 410, 390 440, 350 440 L140 440 C100 440, 80 400, 100 360 C90 340, 105 325, 120 320 Z"
-              stroke="#D9D4C7"
-              strokeWidth="1.5"
-              fill="rgba(255, 255, 255, 0.45)"
-            />
-            <path
-              d="M1020 180 C1040 140, 1100 130, 1140 160 C1170 130, 1230 130, 1260 170 C1290 160, 1340 190, 1330 230 C1340 270, 1290 300, 1250 300 L1040 300 C1000 300, 980 260, 1000 220 C990 200, 1005 185, 1020 180 Z"
-              stroke="#D9D4C7"
-              strokeWidth="1.5"
-              fill="rgba(255, 255, 255, 0.45)"
-            />
+          <svg
+            className="w-full h-full overflow-visible"
+            viewBox={`0 0 ${FLIGHT_CONFIG.world.baseW} ${FLIGHT_CONFIG.world.baseH}`}
+            fill="none"
+          >
+            <defs>
+              {/* Radial gradient for the golden sun */}
+              <radialGradient id="sun-glow-core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#FFF9E6" stopOpacity="1" />
+                <stop offset="40%" stopColor="#F6DF95" stopOpacity="0.85" />
+                <stop offset="75%" stopColor="#C5A869" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#C5A869" stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="sunset-glow-core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#FFF2D6" stopOpacity="1" />
+                <stop offset="45%" stopColor="#E5B262" stopOpacity="0.8" />
+                <stop offset="80%" stopColor="#847445" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="#847445" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+
+            {/* --- GOLDEN SUN 1 (Between Stop 1 and 2 Transition) --- */}
+            <g transform="translate(2500, 1600)">
+              {/* Massive Outer Ambient Aura */}
+              <circle cx="0" cy="0" r="420" fill="url(#sun-glow-core)" opacity="0.4" />
+              {/* Concentric Golden Halo Rings */}
+              <circle cx="0" cy="0" r="240" stroke="#C5A869" strokeWidth="1.5" strokeDasharray="6 12" opacity="0.35" />
+              <circle cx="0" cy="0" r="150" stroke="#C5A869" strokeWidth="1.5" opacity="0.5" />
+              <circle cx="0" cy="0" r="85" fill="#FFE89E" opacity="0.8" />
+              <circle cx="0" cy="0" r="65" fill="#FFFFFF" opacity="0.95" />
+              {/* Radiant Solar Rays */}
+              {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => (
+                <line
+                  key={`sun-ray-${deg}`}
+                  x1={Math.cos((deg * Math.PI) / 180) * 95}
+                  y1={Math.sin((deg * Math.PI) / 180) * 95}
+                  x2={Math.cos((deg * Math.PI) / 180) * 190}
+                  y2={Math.sin((deg * Math.PI) / 180) * 190}
+                  stroke="#C5A869"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  opacity="0.35"
+                />
+              ))}
+            </g>
+
+            {/* --- GOLDEN SUN 2 (Between Stop 5 and 6 Transition) --- */}
+            <g transform="translate(2650, 7250)">
+              <circle cx="0" cy="0" r="380" fill="url(#sunset-glow-core)" opacity="0.45" />
+              <circle cx="0" cy="0" r="210" stroke="#847445" strokeWidth="1.5" strokeDasharray="4 8" opacity="0.35" />
+              <circle cx="0" cy="0" r="130" stroke="#C5A869" strokeWidth="1.5" opacity="0.45" />
+              <circle cx="0" cy="0" r="75" fill="#FFE294" opacity="0.85" />
+              <circle cx="0" cy="0" r="55" fill="#FFFFFF" opacity="0.95" />
+            </g>
+
+            {/* Clouds in Far Layer */}
+            {SKY_CLOUDS.map((cloud, cIdx) => (
+              <g
+                key={`far-cloud-${cIdx}`}
+                transform={`translate(${cloud.x}, ${cloud.y}) scale(${cloud.scale * 1.1})`}
+                opacity={cloud.opacity * 0.75}
+              >
+                <path
+                  d="M 40 90 A 35 35 0 0 1 95 65 A 50 50 0 0 1 175 60 A 40 40 0 0 1 230 85 A 30 30 0 0 1 260 120 A 25 25 0 0 1 245 150 L 35 150 A 25 25 0 0 1 20 125 A 30 30 0 0 1 40 90 Z"
+                  fill="rgba(255, 255, 255, 0.75)"
+                  stroke="#E6E0D4"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+              </g>
+            ))}
           </svg>
         </div>
 
         {/* -------------------------------------------------------------------
-            2. MID LAYER (z-10, BELOW World z-30)
+            2. MID LAYER (z-10, Aerodynamic Tailwinds & Drifting Clouds)
         -------------------------------------------------------------------- */}
         <div
           ref={midLayerRef}
-          className="absolute inset-0 pointer-events-none z-10 overflow-hidden"
-          style={{ willChange: 'transform' }}
+          className="absolute top-0 left-0 pointer-events-none z-10"
+          style={{
+            width: `${FLIGHT_CONFIG.world.baseW}px`,
+            height: `${FLIGHT_CONFIG.world.baseH}px`,
+            willChange: 'transform'
+          }}
         >
-          <svg className="w-full h-full opacity-65" viewBox="0 0 1440 900" fill="none">
-            <g transform="translate(680, 120) scale(0.95)">
-              <path
-                d="M 20 40 A 15 15 0 0 1 45 25 A 25 25 0 0 1 85 25 A 15 15 0 0 1 110 40 A 12 12 0 0 1 100 55 L 25 55 A 12 12 0 0 1 20 40 Z"
-                fill="#FFFFFF"
-                fillOpacity="0.85"
-                stroke="#D9D4C7"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </g>
-            <g transform="translate(380, 640) scale(1.0)">
-              <path
-                d="M 20 40 A 15 15 0 0 1 45 25 A 25 25 0 0 1 85 25 A 15 15 0 0 1 110 40 A 12 12 0 0 1 100 55 L 25 55 A 12 12 0 0 1 20 40 Z"
-                fill="#FFFFFF"
-                fillOpacity="0.85"
-                stroke="#D9D4C7"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </g>
+          <svg
+            className="w-full h-full overflow-visible"
+            viewBox={`0 0 ${FLIGHT_CONFIG.world.baseW} ${FLIGHT_CONFIG.world.baseH}`}
+            fill="none"
+          >
+            {/* Mid-layer clouds */}
+            {SKY_CLOUDS.filter((_, idx) => idx % 2 === 0).map((cloud, cIdx) => (
+              <g
+                key={`mid-cloud-${cIdx}`}
+                transform={`translate(${cloud.x + 350}, ${cloud.y + 200}) scale(${cloud.scale * 0.85})`}
+                opacity={cloud.opacity * 0.9}
+              >
+                <path
+                  d="M 30 70 A 25 25 0 0 1 70 50 A 38 38 0 0 1 130 45 A 30 30 0 0 1 175 65 A 22 22 0 0 1 195 90 L 25 90 A 20 20 0 0 1 30 70 Z"
+                  fill="#FFFFFF"
+                  fillOpacity="0.9"
+                  stroke="#DED8CB"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+              </g>
+            ))}
           </svg>
         </div>
 
         {/* -------------------------------------------------------------------
-            3. NEAR LAYER (z-15, BELOW World z-30, Fades out during dwell)
-        -------------------------------------------------------------------- */}
-        <div
-          ref={nearLayerRef}
-          className="absolute inset-0 pointer-events-none z-15 overflow-hidden transition-opacity duration-300"
-          style={{ willChange: 'transform, opacity' }}
-        >
-          <div
-            className="near-cloud absolute -bottom-10 -right-20 w-[440px] h-[280px] rounded-full bg-white/70 blur-2xl pointer-events-none"
-            style={{ willChange: 'transform' }}
-          />
-          {!isMobile && (
-            <div
-              className="near-cloud absolute -top-16 -left-24 w-[500px] h-[320px] rounded-full bg-white/60 blur-3xl pointer-events-none"
-              style={{ willChange: 'transform' }}
-            />
-          )}
-          {!isMobile && (
-            <div
-              className="near-cloud absolute top-1/2 right-1/3 w-[360px] h-[220px] rounded-full bg-white/50 blur-2xl pointer-events-none"
-              style={{ willChange: 'transform' }}
-            />
-          )}
-        </div>
-
-        {/* -------------------------------------------------------------------
-            4. WORLD CONTAINER (z-30, In Front of all Clouds & Glows)
+            3. WORLD CONTAINER (z-30)
         -------------------------------------------------------------------- */}
         <div
           ref={worldRef}
@@ -685,7 +793,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
             height: `${FLIGHT_CONFIG.world.baseH}px`
           }}
         >
-          {/* Continuous SVG Flight Path & Paper Plane (z-10 inside world) */}
+          {/* Continuous SVG Flight Path & Paper Plane */}
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10"
             viewBox={`0 0 ${FLIGHT_CONFIG.world.baseW} ${FLIGHT_CONFIG.world.baseH}`}
@@ -693,12 +801,12 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
           >
             <defs>
               <mask id="world-trail-reveal-mask">
-                <rect x="-1000" y="-1000" width="7600" height="9400" fill="black" />
+                <rect x="-2000" y="-2000" width="12000" height="18000" fill="black" />
                 <path
                   ref={trailMaskPathRef}
                   d={activePathD}
                   stroke="white"
-                  strokeWidth="52"
+                  strokeWidth="54"
                   strokeLinecap="round"
                   fill="none"
                 />
@@ -713,48 +821,200 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
               fill="none"
             />
 
-            {/* Faint Full Dotted Trail */}
+            {/* Revealed Dotted Trail: strictly behind plane */}
             <path
               d={activePathD}
               stroke="#847445"
-              strokeWidth="3"
-              strokeDasharray="3 14"
+              strokeWidth="4"
+              strokeDasharray="3 15"
               strokeLinecap="round"
-              opacity={FLIGHT_CONFIG.trail.faintOpacity}
-              fill="none"
-            />
-
-            {/* Bright Revealed Dotted Trail */}
-            <path
-              d={activePathD}
-              stroke="#847445"
-              strokeWidth="3.5"
-              strokeDasharray="3 14"
-              strokeLinecap="round"
-              opacity={FLIGHT_CONFIG.trail.brightOpacity}
+              opacity="0.90"
               fill="none"
               mask="url(#world-trail-reveal-mask)"
             />
 
-            {/* Moving Origami Paper Plane with Gold Nose Tip */}
+            {/* --- 1. TRANSITION WIND SWIRLS --- */}
+            {WIND_SWIRLS.map((w, idx) => (
+              <g key={`wind-swirl-${idx}`} transform={`translate(${w.x}, ${w.y}) scale(${w.scale}) rotate(${w.rotation})`} opacity={w.opacity}>
+                {/* Main Breezy Spiral Loop */}
+                <path
+                  d="M -140 25 C -70 30, 0 18, 55 -5 C 98 -24, 138 -55, 120 -95 C 104 -128, 62 -120, 56 -90 C 50 -60, 82 -48, 102 -58"
+                  fill="none"
+                  stroke="#C5A869"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {/* Secondary companion gust curl */}
+                <path
+                  d="M -105 50 C -50 54, 12 42, 58 20 C 85 5, 112 -16, 102 -42 C 90 -62, 62 -56, 58 -36 C 54 -20, 74 -12, 88 -18"
+                  fill="none"
+                  stroke="#C5A869"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.75"
+                />
+                {/* Breeze dash particles */}
+                <path d="M -175 20 L -150 21" stroke="#C5A869" strokeWidth="2.2" strokeLinecap="round" opacity="0.6" />
+                <path d="M -135 68 L -110 70" stroke="#C5A869" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+              </g>
+            ))}
+
+            {/* --- 2. TRANSITION BIRD FLOCKS (Crisp V-Formation Silhouettes) --- */}
+            {BIRD_FLOCKS.map((b, idx) => (
+              <g key={`world-bird-flock-${idx}`} transform={`translate(${b.x}, ${b.y}) scale(${b.scale}) rotate(${b.rotation})`} opacity="0.85">
+                {/* Lead bird */}
+                <path d="M 0 0 Q 14 -12 28 0 Q 42 -12 56 0" stroke="#847445" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+                {/* Wingman right 1 */}
+                <path d="M 48 26 Q 60 15 72 26 Q 84 15 96 26" stroke="#847445" strokeWidth="3" fill="none" strokeLinecap="round" />
+                {/* Wingman right 2 */}
+                <path d="M 94 52 Q 104 43 114 52 Q 124 43 134 52" stroke="#847445" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.9" />
+                {/* Wingman left 1 */}
+                <path d="M -42 24 Q -30 13 -18 24 Q -6 13 6 24" stroke="#847445" strokeWidth="3" fill="none" strokeLinecap="round" />
+                {/* Wingman left 2 */}
+                <path d="M -84 48 Q -74 39 -64 48 Q -54 39 -44 48" stroke="#847445" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.9" />
+              </g>
+            ))}
+
+            {/* --- 3. TRANSITION HOT AIR BALLOONS (Prominent, High Detail) --- */}
+            {HOT_AIR_BALLOONS.map((bln, idx) => (
+              <g key={`world-balloon-${idx}`} transform={`translate(${bln.x}, ${bln.y}) scale(${bln.scale})`}>
+                {/* Soft ground shadow beneath */}
+                <ellipse cx="0" cy="65" rx="35" ry="8" fill="rgba(0,0,0,0.08)" />
+                {/* Main Balloon Envelope */}
+                <path
+                  d="M 0 -85 C 55 -85, 55 -15, 20 20 L 12 28 L -12 28 L -20 20 C -55 -15, -55 -85, 0 -85 Z"
+                  fill="#FAF8F5"
+                  stroke="#847445"
+                  strokeWidth="2.5"
+                />
+                {/* Center Gold Stripe */}
+                <path
+                  d="M 0 -85 C 18 -85, 18 -15, 6 28 L -6 28 C -18 -15, -18 -85, 0 -85 Z"
+                  fill="#C5A869"
+                  opacity="0.9"
+                />
+                {/* Horizontal Accent Band */}
+                <path
+                  d="M -46 -40 C -15 -35, 15 -35, 46 -40 L 42 -25 C 15 -20, -15 -20, -42 -25 Z"
+                  fill="#847445"
+                  opacity="0.9"
+                />
+                {/* Burner & Ropes */}
+                <line x1="-12" y1="28" x2="-8" y2="44" stroke="#847445" strokeWidth="1.8" />
+                <line x1="12" y1="28" x2="8" y2="44" stroke="#847445" strokeWidth="1.8" />
+                <line x1="-4" y1="28" x2="-3" y2="44" stroke="#C5A869" strokeWidth="1.4" />
+                <line x1="4" y1="28" x2="3" y2="44" stroke="#C5A869" strokeWidth="1.4" />
+                {/* Glowing Burner Flame */}
+                <circle cx="0" cy="34" r="4" fill="#E59834" />
+                {/* Wicker Passenger Basket */}
+                <rect x="-11" y="44" width="22" height="16" rx="3" fill="#D6C4AA" stroke="#847445" strokeWidth="2" />
+                <line x1="-11" y1="52" x2="11" y2="52" stroke="#847445" strokeWidth="1" strokeDasharray="3 2" />
+              </g>
+            ))}
+
+            {/* Checkpoint Radar Beacons */}
+            {activeConfigs.map((cfg, idx) => {
+              const [px, py] = cfg.pathPoint;
+              return (
+                <g key={`waypoint-beacon-${idx}`} className="pointer-events-none">
+                  <circle
+                    cx={px}
+                    cy={py}
+                    r="65"
+                    stroke="#847445"
+                    strokeWidth="1.5"
+                    strokeDasharray="5 9"
+                    opacity="0.28"
+                    fill="none"
+                  />
+                  <circle
+                    cx={px}
+                    cy={py}
+                    r="40"
+                    stroke="#847445"
+                    strokeWidth="1.5"
+                    opacity="0.40"
+                    fill="rgba(255, 255, 255, 0.65)"
+                  />
+                  <circle
+                    cx={px}
+                    cy={py}
+                    r="20"
+                    stroke="#847445"
+                    strokeWidth="2.5"
+                    opacity="0.75"
+                    fill="#FAF8F5"
+                  />
+                  <circle
+                    cx={px}
+                    cy={py}
+                    r="6.5"
+                    fill="#847445"
+                  />
+                  <line x1={px - 28} y1={py} x2={px - 10} y2={py} stroke="#847445" strokeWidth="2" />
+                  <line x1={px + 10} y1={py} x2={px + 28} y2={py} stroke="#847445" strokeWidth="2" />
+                  <line x1={px} y1={py - 28} x2={px} y2={py - 10} stroke="#847445" strokeWidth="2" />
+                  <line x1={px} y1={py + 10} x2={px} y2={py + 28} stroke="#847445" strokeWidth="2" />
+                </g>
+              );
+            })}
+
+            {/* Paper Plane */}
             <g ref={planeRef} className="pointer-events-none" style={{ willChange: 'transform' }}>
-              <g transform="translate(4, 8) scale(0.24) translate(-110, -90)" opacity="0.18">
+              <g transform="translate(8, 16) scale(0.44) translate(-110, -90)" opacity="0.25">
                 <path d="M110 20 L25 140 L110 115 Z" fill="#000000" />
                 <path d="M110 20 L195 140 L110 115 Z" fill="#000000" />
                 <path d="M110 20 L110 160 L102 116 Z" fill="#000000" />
                 <path d="M110 20 L110 160 L118 116 Z" fill="#000000" />
               </g>
-              <g transform="scale(0.24) translate(-110, -90)">
-                <path d="M110 20 L25 140 L110 115 Z" fill="#FFFFFF" stroke="#D1C7BA" strokeWidth="2" />
-                <path d="M110 20 L195 140 L110 115 Z" fill="#F8F7F4" stroke="#D1C7BA" strokeWidth="2" />
-                <path d="M110 20 L110 160 L102 116 Z" fill="#E8E4DA" />
-                <path d="M110 20 L110 160 L118 116 Z" fill="#D6D0C2" />
-                <path d="M110 20 L102 45 L118 45 Z" fill="#847445" />
+
+              <circle
+                cx="0"
+                cy="22"
+                r="16"
+                fill="#C5A869"
+                opacity="0.35"
+                className="animate-pulse"
+              />
+
+              <g transform="scale(0.44) translate(-110, -90)">
+                <path 
+                  d="M110 20 L25 140 L110 115 Z" 
+                  fill="#FFFFFF" 
+                  stroke="#C4BCAD" 
+                  strokeWidth="2" 
+                />
+                <path 
+                  d="M110 20 L195 140 L110 115 Z" 
+                  fill="#F4F1EA" 
+                  stroke="#C4BCAD" 
+                  strokeWidth="2" 
+                />
+                <path 
+                  d="M110 20 L110 160 L102 116 Z" 
+                  fill="#E4DFC7" 
+                />
+                <path 
+                  d="M110 20 L110 160 L118 116 Z" 
+                  fill="#D0C9B3" 
+                />
+                <path 
+                  d="M110 20 L100 48 L120 48 Z" 
+                  fill="#C5A869" 
+                />
+                <circle 
+                  cx="110" 
+                  cy="24" 
+                  r="3" 
+                  fill="#FFFFFF" 
+                />
               </g>
             </g>
           </svg>
 
-          {/* EDITORIAL STOP LAYOUTS (NO TEXT BOX CONTAINER, ROTATED PHOTO CARDS, z-20) */}
+          {/* EDITORIAL STOP LAYOUTS */}
           {activeConfigs.map((cfg, idx) => {
             const stage = activeStages[idx];
             if (!stage) return null;
@@ -764,95 +1024,94 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
               <div
                 key={stage.id}
                 id={`world-stop-${idx}`}
-                className="absolute pointer-events-auto z-20 transition-transform duration-200"
+                className="absolute pointer-events-auto z-20"
                 style={{
                   left: 0,
                   top: 0,
                   width: `${FLIGHT_CONFIG.world.baseW}px`,
                   height: `${FLIGHT_CONFIG.world.baseH}px`,
-                  opacity: 1 // Permanent opacity 1.0 (no ghosting, camera pan handles exit)
+                  opacity: 1
                 }}
               >
-                {/* GIANT OUTLINED BACKGROUND NUMERAL BEHIND TEXT */}
+                {/* Outlined Background Watermark Numeral */}
                 <div
-                  className="flight-numeral absolute select-none pointer-events-none font-mono font-black text-[230px] leading-none text-transparent z-0"
+                  className="flight-numeral absolute select-none pointer-events-none font-mono font-black text-[280px] leading-none text-transparent z-0"
                   style={{
                     left: `${cfg.textPosition[0] - 40}px`,
                     top: `${cfg.textPosition[1] - 110}px`,
-                    WebkitTextStroke: '2px rgba(132, 116, 69, 0.16)',
-                    opacity: 0.15
+                    WebkitTextStroke: '2.5px rgba(132, 116, 69, 0.16)',
+                    opacity: 0.16
                   }}
                 >
                   {stage.number}
                 </div>
 
-                {/* 1. FLOATING EDITORIAL TEXT COLUMN (NO BOX CONTAINER) */}
+                {/* 1. FLOATING EDITORIAL TEXT COLUMN */}
                 <div
-                  className="absolute z-10 space-y-4"
+                  className="absolute z-10 space-y-3.5"
                   style={{
                     left: `${cfg.textPosition[0]}px`,
                     top: `${cfg.textPosition[1]}px`,
                     width: `${cfg.textWidth}px`
                   }}
                 >
-                  {/* Title Row with Integrated Stamp Tile */}
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-3xl font-extrabold text-[#847445]">
+                  <div className="flex items-center gap-3.5">
+                    <span className="font-mono text-5xl font-black text-[#847445]">
                       {stage.number}
                     </span>
-                    <div className="w-10 h-10 rounded-xl bg-white/95 text-[#847445] flex items-center justify-center shrink-0 border border-[#847445]/20 shadow-2xs">
-                      <Stamp className="w-5 h-5 stroke-[2.2]" />
+                    <div className="w-12 h-12 rounded-2xl bg-white text-[#847445] flex items-center justify-center shrink-0 border border-[#847445]/30 shadow-md">
+                      <Stamp className="w-6 h-6 stroke-[2.2]" />
                     </div>
-                    <h3 className="font-display font-black text-2xl sm:text-3xl text-[#14181F] tracking-tight">
-                      {stage.title}
-                    </h3>
+                    <div>
+                      <span className="text-[11px] font-mono tracking-widest text-[#847445] font-bold uppercase block">
+                        CYK GROWTH STAGE
+                      </span>
+                      <h3 className="font-display font-black text-3xl sm:text-4xl text-[#14181F] tracking-tight">
+                        {stage.title}
+                      </h3>
+                    </div>
                   </div>
 
-                  {/* Italic Tagline */}
-                  <p className="text-xs sm:text-sm font-serif italic text-slate-500">
+                  <p className="text-base sm:text-lg font-serif italic text-[#847445] border-l-2 border-[#C5A869] pl-3 py-0.5">
                     "{stage.tagline}"
                   </p>
 
-                  {/* High Contrast Description */}
-                  <p className="text-[#14181F]/85 text-xs sm:text-sm leading-relaxed">
+                  <p className="text-[#14181F]/90 text-sm sm:text-base leading-relaxed font-normal">
                     {stage.description}
                   </p>
 
-                  {/* CYK Services */}
-                  <div className="pt-1.5">
-                    <div className="text-xs text-slate-600">
-                      <span className="font-semibold text-slate-800">Services: </span>
-                      <span>{stage.cykServices.join(', ')}</span>
+                  <div className="pt-1">
+                    <div className="inline-flex flex-wrap items-center gap-2 p-2 rounded-xl bg-white/80 backdrop-blur-md border border-[#847445]/20 shadow-xs text-xs sm:text-sm">
+                      <span className="font-bold text-slate-900">Services:</span>
+                      <span className="text-[#847445] font-semibold">{stage.cykServices.join(', ')}</span>
                     </div>
                   </div>
 
-                  {/* Key Deliverables Bullet Points */}
                   <div className="pt-1">
-                    <ul className="text-xs text-slate-700 space-y-1">
+                    <ul className="text-xs sm:text-sm text-slate-800 space-y-2">
                       {stage.deliverables.slice(0, 3).map((item, dIdx) => (
-                        <li key={dIdx} className="flex items-start gap-2">
-                          <span className="text-[#847445] font-bold mt-0.5">•</span>
-                          <span>{item}</span>
+                        <li key={dIdx} className="flex items-start gap-2.5 bg-white/60 backdrop-blur-xs p-1.5 px-2.5 rounded-xl border border-slate-100 shadow-2xs">
+                          <CheckCircle2 className="w-4 h-4 text-[#847445] shrink-0 mt-0.5" />
+                          <span className="font-medium">{item}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  {/* Interactive CTA */}
-                  <div className="pt-3">
+                  <div className="pt-2">
                     <button
                       onClick={() => onConsultStage(stage.id)}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#847445] hover:bg-[#6E6038] text-white text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs group"
+                      className="inline-flex items-center gap-3 px-7 py-3 rounded-xl bg-gradient-to-r from-[#847445] to-[#6E6038] hover:from-[#6E6038] hover:to-[#574C2C] text-white text-sm sm:text-base font-bold transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl hover:-translate-y-0.5 group"
                     >
                       <span>Consult on {stage.title}</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
                     </button>
                   </div>
                 </div>
 
-                {/* 2. CASE-STUDY PHOTO CARD (Diagonally offset, slightly rotated, auto-height) */}
+                {/* 2. CASE-STUDY PHOTO CARD */}
                 <div
-                  className={`absolute z-10 bg-white rounded-2xl p-5 border border-[#EAEAEA] ${cfg.cardShadow} transition-transform duration-300 hover:rotate-0`}
+                  className={`absolute z-10 bg-white/95 backdrop-blur-md rounded-3xl p-5 border border-[#E8E2D5] ${cfg.cardShadow} transition-all duration-300 hover:rotate-0 hover:shadow-2xl hover:-translate-y-2`}
                   style={{
                     left: `${cfg.cardPosition[0]}px`,
                     top: `${cfg.cardPosition[1]}px`,
@@ -860,9 +1119,8 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
                     transform: `rotate(${cfg.cardRotation}deg)`
                   }}
                 >
-                  {/* Photo with Custom Sized Height per stop */}
                   <div 
-                    className="rounded-xl overflow-hidden mb-3.5 bg-slate-100 relative group"
+                    className="rounded-2xl overflow-hidden mb-3.5 bg-slate-100 relative group shadow-inner"
                     style={{ height: `${cfg.photoHeight}px` }}
                   >
                     <img
@@ -871,29 +1129,58 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white font-medium uppercase tracking-wider">
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-[10px] text-white font-bold uppercase tracking-wider shadow-md border border-white/20">
                       {stage.proofProject.type}
+                    </div>
+                    <div className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-[#847445]/90 backdrop-blur-md text-[10px] text-white font-semibold flex items-center gap-1.5 shadow-sm">
+                      <Sparkles className="w-3 h-3 text-[#C5A869]" />
+                      <span>CONFIRMED PROJECT</span>
                     </div>
                   </div>
 
-                  {/* Caption */}
-                  <div className="text-xs sm:text-sm text-slate-700 leading-snug">
-                    <strong className="text-slate-900 font-bold">{stage.proofProject.name}: </strong>
+                  <div className="text-sm text-slate-700 leading-snug">
+                    <strong className="text-slate-900 font-bold text-base block mb-0.5">{stage.proofProject.name}</strong>
                     {stage.proofProject.caption}
                   </div>
 
-                  {/* Verbatim Quote */}
                   {stage.clientQuote && (
-                    <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-start gap-2.5">
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-start gap-2.5 bg-[#FAF8F5]/80 p-2.5 rounded-2xl">
                       <Quote className="w-4 h-4 text-[#847445] shrink-0 mt-0.5" />
-                      <div className="text-[11px] text-slate-600 italic leading-relaxed">
+                      <div className="text-xs text-slate-700 italic leading-relaxed">
                         "{stage.clientQuote.text}"
-                        <span className="block not-italic font-semibold text-slate-800 mt-1">
-                          — {stage.clientQuote.author}, {stage.clientQuote.brand}
+                        <span className="block not-italic font-bold text-slate-900 mt-0.5">
+                          — {stage.clientQuote.author}, <span className="text-[#847445]">{stage.clientQuote.brand}</span>
                         </span>
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* 3. AIRPORT RUNWAY CHECKPOINT HUD BADGE */}
+                <div
+                  className="absolute pointer-events-none z-15 flex flex-col gap-1.5 select-none"
+                  style={{
+                    left: `${cfg.pathPoint[0] - 110}px`,
+                    top: `${cfg.pathPoint[1] + 75}px`,
+                    width: '240px'
+                  }}
+                >
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-[#847445]/30 shadow-md text-[11px] font-mono text-[#14181F]">
+                    <span className="relative flex h-2.5 w-2.5 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A869] opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#847445]" />
+                    </span>
+                    <span className="font-bold tracking-wider text-[#847445]">
+                      {cfg.fixCode}
+                    </span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-lg bg-slate-900/90 backdrop-blur-sm text-[10px] font-mono text-white/95 tracking-tight flex items-center justify-between shadow-sm">
+                    <span className="truncate">{cfg.airportType}</span>
+                    <span className="text-[#C5A869] ml-1 shrink-0 font-bold">CHK</span>
+                  </div>
+                  <div className="text-[9px] font-mono text-slate-500 tracking-wider pl-1 font-semibold uppercase">
+                    {cfg.telemetry}
+                  </div>
                 </div>
 
               </div>
