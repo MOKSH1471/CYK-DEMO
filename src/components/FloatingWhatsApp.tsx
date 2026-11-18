@@ -3,7 +3,7 @@ import { MessageSquare } from 'lucide-react';
 
 export const FloatingWhatsApp: React.FC = () => {
   return (
-    <div className="fixed bottom-5 right-5 z-40">
+    <div id="floating-whatsapp" className="fixed bottom-5 right-5 z-40 transition-opacity duration-200">
       <a
         href="https://wa.me/918285288098?text=Hello%20CYK%20Hospitalities,%20I%20would%20like%20to%20discuss%20a%20food%20business%20project."
         target="_blank"

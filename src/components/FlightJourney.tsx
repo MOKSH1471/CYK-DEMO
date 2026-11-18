@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useImperativeHandle, forwardRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
@@ -7,6 +7,7 @@ import {
   Lightbulb, Calculator, MapPin, Utensils, Palette, ChefHat, 
   Megaphone, Store, ArrowRight, Quote, CheckCircle2, Sparkles, Sun
 } from 'lucide-react';
+import { PaperPlane } from './PaperPlane';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -301,10 +302,29 @@ const SKY_CLOUDS = [
   { x: 2200, y: 11700, scale: 1.6, opacity: 0.75 }
 ];
 
+export interface FlightJourneyHandle {
+  updateFlight: (progress: number) => void;
+}
+
 interface FlightJourneyProps {
   onConsultStage: (stageIndex: number) => void;
   onOpenServiceModal: (stageIndex: number) => void;
   stopCount?: number;
+  isEmbedded?: boolean;
+  externalProgress?: number;
+}
+
+export function getInitialFlightPlaneScreenPos(vw: number, vh: number) {
+  const scaleW = vw / 1440;
+  const scaleH = (vh - 80) / 620;
+  const s = Math.max(0.85, Math.min(1.15, Math.min(scaleW, scaleH)));
+  const topNavOffset = 70;
+  const targetX = -1000 * s + vw / 2;
+  const targetY = -950 * s + (vh + topNavOffset) / 2;
+  const screenX = targetX + 1680 * s;
+  const screenY = targetY + 870 * s;
+  const rotation = 110.1;
+  return { screenX, screenY, rotation, scale: s };
 }
 
 
@@ -341,11 +361,13 @@ const HOT_AIR_BALLOONS = [
   { x: 2500, y: 8600, scale: 1.45 }
 ];
 
-export const FlightJourney: React.FC<FlightJourneyProps> = ({
+export const FlightJourney = forwardRef<FlightJourneyHandle, FlightJourneyProps>(({
   onConsultStage,
   onOpenServiceModal,
-  stopCount = 8
-}) => {
+  stopCount = 8,
+  isEmbedded = false,
+  externalProgress
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pinWrapperRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
@@ -362,6 +384,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const smoothedAngleRef = useRef<number>(0);
+  const applyFlightProgressRef = useRef<((progress: number) => void) | null>(null);
 
   // Initialized to Stop 01 Camera Anchor with +35px navbar safety clearance
   const cameraStateRef = useRef({
@@ -400,10 +423,10 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
     if (isReducedMotion) return;
 
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 0.85,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      touchMultiplier: 1.5
+      touchMultiplier: 1.2
     });
 
     lenis.on('scroll', ScrollTrigger.update);
@@ -412,7 +435,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
       lenis.raf(time * 1000);
     };
     gsap.ticker.add(tickerCb);
-    gsap.ticker.lagSmoothing(0);
+    // Use default GSAP lag smoothing to absorb frame jitter
 
     return () => {
       gsap.ticker.remove(tickerCb);
@@ -420,9 +443,9 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
     };
   }, [isReducedMotion]);
 
-  // Continuous Camera Damping
+  // Continuous Camera Damping (Only for non-embedded standalone mode)
   useEffect(() => {
-    if (isReducedMotion) return;
+    if (isReducedMotion || isEmbedded) return;
 
     const updateCameraTick = () => {
       const cam = cameraStateRef.current;
@@ -457,7 +480,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
     return () => {
       gsap.ticker.remove(updateCameraTick);
     };
-  }, [isReducedMotion]);
+  }, [isReducedMotion, isEmbedded]);
 
   // GSAP ScrollTrigger Flight Engine
   useEffect(() => {
@@ -533,6 +556,112 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
 
     let scaleFactor = getScaleFactor();
 
+    const applyFlightProgress = (rawScroll: number) => {
+      const startHold = 0.04;
+      const endHold = 0.06;
+      const dwellRatio = 0.20;
+
+      let segIdx = 0;
+      let localFlight = 0;
+
+      if (rawScroll <= startHold) {
+        segIdx = 0;
+        localFlight = 0;
+      } else if (rawScroll >= 1.0 - endHold) {
+        segIdx = totalSegments - 1;
+        localFlight = 1;
+      } else {
+        const effectiveScroll = (rawScroll - startHold) / (1.0 - startHold - endHold);
+        const scaled = effectiveScroll * totalSegments;
+        segIdx = Math.min(totalSegments - 1, Math.max(0, Math.floor(scaled)));
+        const tau = Math.max(0, Math.min(1, scaled - segIdx));
+
+        if (tau < dwellRatio) {
+          localFlight = 0;
+        } else if (tau > 1 - dwellRatio) {
+          localFlight = 1;
+        } else {
+          localFlight = smootherstep(dwellRatio, 1 - dwellRatio, tau);
+        }
+      }
+
+      const dStart = stopDistances[segIdx] || 0;
+      const dEnd = stopDistances[segIdx + 1] || totalPathLen;
+      const currentDist = dStart + (dEnd - dStart) * localFlight;
+
+      // Trail Progressive Reveal: strictly behind plane
+      if (trailMaskPathRef.current) {
+        const revealedLen = Math.max(0, Math.min(totalPathLen, currentDist));
+        trailMaskPathRef.current.style.strokeDashoffset = `${totalPathLen - revealedLen}`;
+      }
+
+      // Sample plane position & banking angle with +90 deg offset
+      const pt = pathEl.getPointAtLength(currentDist);
+      const lookAheadDist = Math.min(totalPathLen, currentDist + 12);
+      const lookBehindDist = Math.max(0, currentDist - 12);
+      const ptAhead = pathEl.getPointAtLength(lookAheadDist);
+      const ptBehind = pathEl.getPointAtLength(lookBehindDist);
+
+      const dx = ptAhead.x - ptBehind.x;
+      const dy = ptAhead.y - ptBehind.y;
+      const targetDeg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+
+      const deltaDeg = shortestAngleDelta(targetDeg, smoothedAngleRef.current);
+      smoothedAngleRef.current += deltaDeg * FLIGHT_CONFIG.plane.rotationLerp;
+
+      if (planeRef.current) {
+        planeRef.current.setAttribute(
+          'transform',
+          `translate(${pt.x}, ${pt.y}) rotate(${smoothedAngleRef.current})`
+        );
+      }
+
+      // Camera Lockstep Interpolation
+      const currStop = activeConfigs[segIdx];
+      const nextStop = activeConfigs[Math.min(activeConfigs.length - 1, segIdx + 1)];
+
+      const anchorX = currStop.cameraAnchor[0] + (nextStop.cameraAnchor[0] - currStop.cameraAnchor[0]) * localFlight;
+      const anchorY = currStop.cameraAnchor[1] + (nextStop.cameraAnchor[1] - currStop.cameraAnchor[1]) * localFlight;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // +70px vertical offset ensures comfortable clearance below floating nav
+      const topNavOffset = 70;
+      const targetX = -anchorX * scaleFactor + vw / 2;
+      const targetY = -anchorY * scaleFactor + (vh + topNavOffset) / 2;
+
+      cameraStateRef.current.targetX = targetX;
+      cameraStateRef.current.targetY = targetY;
+
+      // When embedded, update transforms directly for instantaneous 60fps locked response without damping lag
+      if (isEmbedded) {
+        cameraStateRef.current.currentX = targetX;
+        cameraStateRef.current.currentY = targetY;
+
+        if (worldRef.current) {
+          worldRef.current.style.transform = `translate3d(${targetX}px, ${targetY}px, 0) scale(${scaleFactor})`;
+          worldRef.current.style.transformOrigin = '0 0';
+        }
+        if (farLayerRef.current) {
+          farLayerRef.current.style.transform = `translate3d(${targetX * FLIGHT_CONFIG.parallax.far}px, ${targetY * FLIGHT_CONFIG.parallax.far}px, 0) scale(${scaleFactor})`;
+          farLayerRef.current.style.transformOrigin = '0 0';
+        }
+        if (midLayerRef.current) {
+          midLayerRef.current.style.transform = `translate3d(${targetX * FLIGHT_CONFIG.parallax.mid}px, ${targetY * FLIGHT_CONFIG.parallax.mid}px, 0) scale(${scaleFactor})`;
+          midLayerRef.current.style.transformOrigin = '0 0';
+        }
+      }
+    };
+
+    applyFlightProgressRef.current = applyFlightProgress;
+
+    // If initial embedded progress is supplied, immediately evaluate Stop 01
+    if (isEmbedded) {
+      applyFlightProgress(typeof externalProgress === 'number' ? externalProgress : 0);
+      return;
+    }
+
     const trigger = ScrollTrigger.create({
       trigger: containerRef.current,
       start: 'top top',
@@ -545,88 +674,29 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
         scaleFactor = getScaleFactor();
       },
       onUpdate: (self) => {
-        const rawScroll = self.progress;
-
-        const startHold = 0.04;
-        const endHold = 0.06;
-        const dwellRatio = 0.20;
-
-        let segIdx = 0;
-        let localFlight = 0;
-
-        if (rawScroll <= startHold) {
-          segIdx = 0;
-          localFlight = 0;
-        } else if (rawScroll >= 1.0 - endHold) {
-          segIdx = totalSegments - 1;
-          localFlight = 1;
-        } else {
-          const effectiveScroll = (rawScroll - startHold) / (1.0 - startHold - endHold);
-          const scaled = effectiveScroll * totalSegments;
-          segIdx = Math.min(totalSegments - 1, Math.max(0, Math.floor(scaled)));
-          const tau = Math.max(0, Math.min(1, scaled - segIdx));
-
-          if (tau < dwellRatio) {
-            localFlight = 0;
-          } else if (tau > 1 - dwellRatio) {
-            localFlight = 1;
-          } else {
-            localFlight = smootherstep(dwellRatio, 1 - dwellRatio, tau);
-          }
-        }
-
-        const dStart = stopDistances[segIdx] || 0;
-        const dEnd = stopDistances[segIdx + 1] || totalPathLen;
-        const currentDist = dStart + (dEnd - dStart) * localFlight;
-
-        // Trail Progressive Reveal: strictly behind plane
-        if (trailMaskPathRef.current) {
-          const revealedLen = Math.max(0, Math.min(totalPathLen, currentDist));
-          trailMaskPathRef.current.style.strokeDashoffset = `${totalPathLen - revealedLen}`;
-        }
-
-        // Sample plane position & banking angle with +90 deg offset
-        const pt = pathEl.getPointAtLength(currentDist);
-        const lookAheadDist = Math.min(totalPathLen, currentDist + 12);
-        const lookBehindDist = Math.max(0, currentDist - 12);
-        const ptAhead = pathEl.getPointAtLength(lookAheadDist);
-        const ptBehind = pathEl.getPointAtLength(lookBehindDist);
-
-        const dx = ptAhead.x - ptBehind.x;
-        const dy = ptAhead.y - ptBehind.y;
-        const targetDeg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-
-        const deltaDeg = shortestAngleDelta(targetDeg, smoothedAngleRef.current);
-        smoothedAngleRef.current += deltaDeg * FLIGHT_CONFIG.plane.rotationLerp;
-
-        if (planeRef.current) {
-          planeRef.current.setAttribute(
-            'transform',
-            `translate(${pt.x}, ${pt.y}) rotate(${smoothedAngleRef.current})`
-          );
-        }
-
-        // Camera Lockstep Interpolation
-        const currStop = activeConfigs[segIdx];
-        const nextStop = activeConfigs[Math.min(activeConfigs.length - 1, segIdx + 1)];
-
-        const anchorX = currStop.cameraAnchor[0] + (nextStop.cameraAnchor[0] - currStop.cameraAnchor[0]) * localFlight;
-        const anchorY = currStop.cameraAnchor[1] + (nextStop.cameraAnchor[1] - currStop.cameraAnchor[1]) * localFlight;
-
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-
-        // +70px vertical offset ensures comfortable clearance below floating nav
-        const topNavOffset = 70;
-        cameraStateRef.current.targetX = -anchorX * scaleFactor + vw / 2;
-        cameraStateRef.current.targetY = -anchorY * scaleFactor + (vh + topNavOffset) / 2;
+        applyFlightProgress(self.progress);
       }
     });
 
     return () => {
       trigger.kill();
     };
-  }, [activeCount, activeConfigs, isReducedMotion]);
+  }, [activeCount, activeConfigs, isReducedMotion, isEmbedded]);
+
+  useImperativeHandle(ref, () => ({
+    updateFlight: (p: number) => {
+      if (applyFlightProgressRef.current) {
+        applyFlightProgressRef.current(p);
+      }
+    }
+  }), []);
+
+  // Synchronize when externalProgress updates in embedded mode
+  useEffect(() => {
+    if (isEmbedded && typeof externalProgress === 'number' && applyFlightProgressRef.current) {
+      applyFlightProgressRef.current(externalProgress);
+    }
+  }, [isEmbedded, externalProgress]);
 
   if (isReducedMotion) {
     return (
@@ -645,19 +715,30 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
   }
 
   return (
-    <section
-      id="journey"
+    <div
+      id={isEmbedded ? undefined : 'journey'}
       ref={containerRef}
-      className="relative w-full bg-[#FAF8F5] text-[#14181F] overflow-hidden"
+      className={isEmbedded ? 'absolute inset-0 w-full h-full overflow-hidden' : 'relative w-full bg-[#FAF8F5] text-[#14181F] overflow-hidden'}
     >
       {/* PINNED VIEWPORT */}
       <div
         ref={pinWrapperRef}
-        className="relative w-full h-screen overflow-hidden flex items-center justify-center"
+        className={isEmbedded ? 'relative w-full h-full overflow-hidden flex items-center justify-center' : 'relative w-full h-screen overflow-hidden flex items-center justify-center'}
+        style={{ contain: 'paint' }}
       >
-        {/* ATMOSPHERIC GLOWS */}
-        <div className="absolute top-1/4 left-1/4 w-[750px] h-[750px] rounded-full bg-[#847445]/5 blur-[160px] pointer-events-none z-0" />
-        <div className="absolute bottom-1/3 right-1/4 w-[850px] h-[850px] rounded-full bg-[#C5A869]/8 blur-[180px] pointer-events-none z-0" />
+        {/* ATMOSPHERIC GLOWS (Hardware-accelerated CSS radial gradients - 0 blur cost) */}
+        <div
+          className="absolute top-1/4 left-1/4 w-[750px] h-[750px] rounded-full pointer-events-none z-0"
+          style={{
+            background: 'radial-gradient(circle, rgba(132, 116, 69, 0.08) 0%, transparent 70%)'
+          }}
+        />
+        <div
+          className="absolute bottom-1/3 right-1/4 w-[850px] h-[850px] rounded-full pointer-events-none z-0"
+          style={{
+            background: 'radial-gradient(circle, rgba(197, 168, 105, 0.10) 0%, transparent 70%)'
+          }}
+        />
 
         {/* -------------------------------------------------------------------
             1. FAR LAYER (z-5, Golden Sun, Clouds, Migrating Birds, Hot Air Balloons)
@@ -914,8 +995,9 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
               </g>
             ))}
 
-            {/* Checkpoint Radar Beacons */}
+            {/* Checkpoint Radar Beacons (Omitted on Stop 01 for a clean handoff) */}
             {activeConfigs.map((cfg, idx) => {
+              if (idx === 0) return null;
               const [px, py] = cfg.pathPoint;
               return (
                 <g key={`waypoint-beacon-${idx}`} className="pointer-events-none">
@@ -961,56 +1043,9 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
               );
             })}
 
-            {/* Paper Plane */}
+            {/* Paper Plane (Shared Reusable Component) */}
             <g ref={planeRef} className="pointer-events-none" style={{ willChange: 'transform' }}>
-              <g transform="translate(8, 16) scale(0.44) translate(-110, -90)" opacity="0.25">
-                <path d="M110 20 L25 140 L110 115 Z" fill="#000000" />
-                <path d="M110 20 L195 140 L110 115 Z" fill="#000000" />
-                <path d="M110 20 L110 160 L102 116 Z" fill="#000000" />
-                <path d="M110 20 L110 160 L118 116 Z" fill="#000000" />
-              </g>
-
-              <circle
-                cx="0"
-                cy="22"
-                r="16"
-                fill="#C5A869"
-                opacity="0.35"
-                className="animate-pulse"
-              />
-
-              <g transform="scale(0.44) translate(-110, -90)">
-                <path 
-                  d="M110 20 L25 140 L110 115 Z" 
-                  fill="#FFFFFF" 
-                  stroke="#C4BCAD" 
-                  strokeWidth="2" 
-                />
-                <path 
-                  d="M110 20 L195 140 L110 115 Z" 
-                  fill="#F4F1EA" 
-                  stroke="#C4BCAD" 
-                  strokeWidth="2" 
-                />
-                <path 
-                  d="M110 20 L110 160 L102 116 Z" 
-                  fill="#E4DFC7" 
-                />
-                <path 
-                  d="M110 20 L110 160 L118 116 Z" 
-                  fill="#D0C9B3" 
-                />
-                <path 
-                  d="M110 20 L100 48 L120 48 Z" 
-                  fill="#C5A869" 
-                />
-                <circle 
-                  cx="110" 
-                  cy="24" 
-                  r="3" 
-                  fill="#FFFFFF" 
-                />
-              </g>
+              <PaperPlane scale={FLIGHT_CONFIG.plane.scale} accentColor="#847445" />
             </g>
           </svg>
 
@@ -1055,6 +1090,21 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
                     width: `${cfg.textWidth}px`
                   }}
                 >
+                  {/* On Stop 01: The Growth Journey Section Intro */}
+                  {idx === 0 && (
+                    <div className="pb-4 mb-3 border-b border-[#EAEAEA]">
+                      <span className="text-[11px] font-mono uppercase tracking-widest text-[#847445] font-bold block mb-1.5">
+                        STAGE 01 · CONCEPT AIRFIELD
+                      </span>
+                      <h2 className="font-display font-black text-3xl sm:text-4xl lg:text-[44px] text-[#14181F] tracking-tight leading-[1.12]">
+                        The Growth Journey
+                      </h2>
+                      <p className="mt-2 text-slate-600 text-sm sm:text-base leading-relaxed">
+                        "From empty plot to expanding brand." Every CYK service appears at the moment in your food business's life when it matters.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-3.5">
                     <span className="font-mono text-5xl font-black text-[#847445]">
                       {stage.number}
@@ -1081,7 +1131,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
                   </p>
 
                   <div className="pt-1">
-                    <div className="inline-flex flex-wrap items-center gap-2 p-2 rounded-xl bg-white/80 backdrop-blur-md border border-[#847445]/20 shadow-xs text-xs sm:text-sm">
+                    <div className="inline-flex flex-wrap items-center gap-2 p-2 rounded-xl bg-white border border-[#847445]/20 shadow-xs text-xs sm:text-sm">
                       <span className="font-bold text-slate-900">Services:</span>
                       <span className="text-[#847445] font-semibold">{stage.cykServices.join(', ')}</span>
                     </div>
@@ -1090,7 +1140,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
                   <div className="pt-1">
                     <ul className="text-xs sm:text-sm text-slate-800 space-y-2">
                       {stage.deliverables.slice(0, 3).map((item, dIdx) => (
-                        <li key={dIdx} className="flex items-start gap-2.5 bg-white/60 backdrop-blur-xs p-1.5 px-2.5 rounded-xl border border-slate-100 shadow-2xs">
+                        <li key={dIdx} className="flex items-start gap-2.5 bg-white p-1.5 px-2.5 rounded-xl border border-slate-100 shadow-2xs">
                           <CheckCircle2 className="w-4 h-4 text-[#847445] shrink-0 mt-0.5" />
                           <span className="font-medium">{item}</span>
                         </li>
@@ -1111,7 +1161,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
 
                 {/* 2. CASE-STUDY PHOTO CARD */}
                 <div
-                  className={`absolute z-10 bg-white/95 backdrop-blur-md rounded-3xl p-5 border border-[#E8E2D5] ${cfg.cardShadow} transition-all duration-300 hover:rotate-0 hover:shadow-2xl hover:-translate-y-2`}
+                  className={`absolute z-10 bg-white rounded-3xl p-5 border border-[#E8E2D5] ${cfg.cardShadow} transition-all duration-300 hover:rotate-0 hover:shadow-2xl hover:-translate-y-2`}
                   style={{
                     left: `${cfg.cardPosition[0]}px`,
                     top: `${cfg.cardPosition[1]}px`,
@@ -1129,10 +1179,10 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-[10px] text-white font-bold uppercase tracking-wider shadow-md border border-white/20">
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-900 text-[10px] text-white font-bold uppercase tracking-wider shadow-md border border-white/20">
                       {stage.proofProject.type}
                     </div>
-                    <div className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-[#847445]/90 backdrop-blur-md text-[10px] text-white font-semibold flex items-center gap-1.5 shadow-sm">
+                    <div className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-[#847445] text-[10px] text-white font-semibold flex items-center gap-1.5 shadow-sm">
                       <Sparkles className="w-3 h-3 text-[#C5A869]" />
                       <span>CONFIRMED PROJECT</span>
                     </div>
@@ -1144,7 +1194,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
                   </div>
 
                   {stage.clientQuote && (
-                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-start gap-2.5 bg-[#FAF8F5]/80 p-2.5 rounded-2xl">
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-start gap-2.5 bg-[#FAF8F5] p-2.5 rounded-2xl">
                       <Quote className="w-4 h-4 text-[#847445] shrink-0 mt-0.5" />
                       <div className="text-xs text-slate-700 italic leading-relaxed">
                         "{stage.clientQuote.text}"
@@ -1156,32 +1206,34 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
                   )}
                 </div>
 
-                {/* 3. AIRPORT RUNWAY CHECKPOINT HUD BADGE */}
-                <div
-                  className="absolute pointer-events-none z-15 flex flex-col gap-1.5 select-none"
-                  style={{
-                    left: `${cfg.pathPoint[0] - 110}px`,
-                    top: `${cfg.pathPoint[1] + 75}px`,
-                    width: '240px'
-                  }}
-                >
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-[#847445]/30 shadow-md text-[11px] font-mono text-[#14181F]">
-                    <span className="relative flex h-2.5 w-2.5 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A869] opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#847445]" />
-                    </span>
-                    <span className="font-bold tracking-wider text-[#847445]">
-                      {cfg.fixCode}
-                    </span>
+                {/* 3. AIRPORT RUNWAY CHECKPOINT HUD BADGE (Hidden on Stop 01 to keep clean aesthetic) */}
+                {cfg.id !== 0 && (
+                  <div
+                    className="absolute pointer-events-none z-15 flex flex-col gap-1.5 select-none"
+                    style={{
+                      left: `${cfg.pathPoint[0] - 110}px`,
+                      top: `${cfg.pathPoint[1] + 75}px`,
+                      width: '240px'
+                    }}
+                  >
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#847445]/30 shadow-md text-[11px] font-mono text-[#14181F]">
+                      <span className="relative flex h-2.5 w-2.5 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A869] opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#847445]" />
+                      </span>
+                      <span className="font-bold tracking-wider text-[#847445]">
+                        {cfg.fixCode}
+                      </span>
+                    </div>
+                    <div className="px-3 py-1.5 rounded-lg bg-slate-900 text-[10px] font-mono text-white/95 tracking-tight flex items-center justify-between shadow-sm">
+                      <span className="truncate">{cfg.airportType}</span>
+                      <span className="text-[#C5A869] ml-1 shrink-0 font-bold">CHK</span>
+                    </div>
+                    <div className="text-[9px] font-mono text-slate-500 tracking-wider pl-1 font-semibold uppercase">
+                      {cfg.telemetry}
+                    </div>
                   </div>
-                  <div className="px-3 py-1.5 rounded-lg bg-slate-900/90 backdrop-blur-sm text-[10px] font-mono text-white/95 tracking-tight flex items-center justify-between shadow-sm">
-                    <span className="truncate">{cfg.airportType}</span>
-                    <span className="text-[#C5A869] ml-1 shrink-0 font-bold">CHK</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-slate-500 tracking-wider pl-1 font-semibold uppercase">
-                    {cfg.telemetry}
-                  </div>
-                </div>
+                )}
 
               </div>
             );
@@ -1189,6 +1241,8 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
         </div>
 
       </div>
-    </section>
+    </div>
   );
-};
+});
+
+FlightJourney.displayName = 'FlightJourney';

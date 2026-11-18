@@ -43,10 +43,12 @@ export function App() {
       />
 
       <main className="flex-grow">
-        {/* 2. Hero: Fullscreen narrative hero with 4K background and StrokeText */}
+        {/* 2. Hero + Growth Flight Journey: Unified pinned viewport */}
         <Hero
           onStartJourney={handleStartJourney}
           onOpenEnquiry={() => handleOpenEnquiry()}
+          onConsultStage={(stageIndex) => handleOpenEnquiry(stageIndex)}
+          onOpenServiceModal={() => handleOpenServices()}
         />
 
         {/* 3. Growth Journey: Stages 01 to 08 with continuous flight corridor */}

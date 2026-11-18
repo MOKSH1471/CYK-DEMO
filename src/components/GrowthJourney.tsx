@@ -1,5 +1,4 @@
 import React from 'react';
-import { FlightJourney } from './FlightJourney';
 import { CONFIRMED_CITIES } from '../data/mockData';
 import { MapPin } from 'lucide-react';
 
@@ -14,26 +13,7 @@ export const GrowthJourney: React.FC<GrowthJourneyProps> = ({
 }) => {
   return (
     <div className="relative bg-white text-[#14181F]">
-      {/* 1. Header Introduction */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 z-20">
-        <div className="pb-8 border-b border-[#EAEAEA] max-w-3xl">
-          <h2 className="font-display font-black text-3xl sm:text-4xl text-[#14181F] tracking-tight">
-            The Growth Journey
-          </h2>
-          <p className="mt-3 text-slate-600 text-base leading-relaxed">
-            "From empty plot to expanding brand." Every CYK service appears at the moment in your food business's life when it matters.
-          </p>
-        </div>
-      </div>
-
-      {/* 2. THE FLIGHT: Full 8-stop World + Camera Scroll Engine */}
-      <FlightJourney
-        onConsultStage={onConsultStage}
-        onOpenServiceModal={onOpenServiceModal}
-        stopCount={8}
-      />
-
-      {/* 3. FORK DESTINATIONS: Confirmed Expansion Hubs */}
+      {/* 1. FORK DESTINATIONS: Confirmed Expansion Hubs */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 z-20">
         <div className="border-t border-[#EAEAEA] pt-12 max-w-2xl mx-auto text-center">
           <div className="text-xs font-mono uppercase tracking-wider text-slate-500 font-semibold mb-4">
@@ -50,7 +30,7 @@ export const GrowthJourney: React.FC<GrowthJourneyProps> = ({
         </div>
       </div>
 
-      {/* 4. SEPARATE FINAL CTA */}
+      {/* 2. SEPARATE FINAL CTA */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 z-20">
         <div id="contact" className="mt-8 pt-16 border-t border-[#EAEAEA] text-center max-w-xl mx-auto">
           <h4 className="font-display font-extrabold text-3xl sm:text-4xl text-[#14181F] tracking-tight">
