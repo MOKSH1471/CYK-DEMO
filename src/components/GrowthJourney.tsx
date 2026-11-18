@@ -8,7 +8,7 @@ interface GrowthJourneyProps {
   onOpenServiceModal: (stageIndex: number) => void;
 }
 
-export const GrowthJourney: React.FC<GrowthJourneyProps> = ({ 
+export const GrowthJourney: React.FC<GrowthJourneyProps> = ({
   onConsultStage,
   onOpenServiceModal
 }) => {
@@ -26,7 +26,7 @@ export const GrowthJourney: React.FC<GrowthJourneyProps> = ({
         </div>
       </div>
 
-      {/* 2. THE FLIGHT: Scroll-Driven Multi-Layer Z-Axis Parallax Engine (All 8 Stops) */}
+      {/* 2. THE FLIGHT: Full 8-stop World + Camera Scroll Engine */}
       <FlightJourney
         onConsultStage={onConsultStage}
         onOpenServiceModal={onOpenServiceModal}

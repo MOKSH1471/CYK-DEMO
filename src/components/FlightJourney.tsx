@@ -22,35 +22,224 @@ const STAMP_ICONS: Record<string, React.ElementType> = {
 };
 
 // =============================================================================
-// CENTRAL FLIGHT CONFIGURATION OBJECT (Tune speeds, scales & easing here)
+// CENTRAL CONFIGURATION OBJECT (Deterministic Coordinates & Layout per Stop)
 // =============================================================================
+export interface StopConfig {
+  id: number;
+  number: string;
+  // SVG Path Anchor Point [x, y]
+  pathPoint: [number, number];
+  // Control point arriving into this stop [x, y] (for interior stops 02-07)
+  controlIn?: [number, number];
+  // Outgoing control point from this stop [x, y]
+  controlOut?: [number, number];
+  // Text column layout (floating on canvas, NO BOX)
+  textPosition: [number, number]; // [x, y]
+  textWidth: number;
+  // Case study photo card layout
+  cardPosition: [number, number]; // [x, y] diagonally offset
+  cardWidth: number;
+  photoHeight: number;
+  cardRotation: number;           // deg between -2 and 2
+  cardShadow: string;
+  // Optimal camera center framing both text + card + plane
+  cameraAnchor: [number, number];
+}
+
 export const FLIGHT_CONFIG = {
-  // Total scroll distance per stop in viewport heights
-  scrollVhPerStop: 110,
-  // GSAP scrub lag (seconds of smooth inertia)
-  scrubLag: 0.8,
-  // Z-axis camera perspective
-  perspective: 1200,
-  // Parallax layer speeds (relative to scroll velocity)
-  layerSpeeds: {
-    farClouds: 0.25,
-    midClouds: 0.55,
-    nearClouds: 1.6, // Fast sweep past viewport edges
-    numeral: 0.35,
-    content: 1.0,
-    plane: 1.0
+  world: {
+    baseW: 5600,
+    baseH: 7400,
+    padding: 800
   },
-  // Scale animations
-  scaleValues: {
-    nearCloudEnd: 2.2, // Clouds scale up as camera flies through them
-    cardStart: 0.92,   // Case study card scales up to 1.0 upon arrival
-    numeralStart: 0.85,
-    numeralEnd: 1.15
+  refResolution: {
+    w: 1440,
+    h: 900
   },
-  // Mobile performance thresholds
-  mobileMaxNearClouds: 1,
-  desktopMaxNearClouds: 3
+  scrollVhPerStop: 1.15,
+  scrub: true,
+  parallax: {
+    far: 0.25,
+    mid: 0.55,
+    near: 1.25
+  },
+  plane: {
+    rotationLerp: 0.22,
+    scale: 0.24
+  },
+  trail: {
+    faintOpacity: 0.18,
+    brightOpacity: 0.85,
+    leadAhead: 0.025
+  },
+  cameraDamping: 0.12, // Lerp factor for buttery camera gliding
+  mobileBreakpoint: 768,
+
+  // ---------------------------------------------------------------------------
+  // ORGANIC 8-STOP WAYPOINTS & LAYOUT (Uneven spacing, diagonal & vertical sections)
+  // ---------------------------------------------------------------------------
+  stops: [
+    // Stop 01: "The Idea" — upper left-center
+    {
+      id: 0,
+      number: "01",
+      pathPoint: [1400, 700],
+      controlOut: [2000, 800],
+      textPosition: [1640, 480],
+      textWidth: 440,
+      cardPosition: [2140, 520],
+      cardWidth: 430,
+      photoHeight: 210,
+      cardRotation: -1.3,
+      cardShadow: "shadow-xl",
+      cameraAnchor: [1880, 700]
+    },
+    // Stop 02: "The Numbers" — upper right (wide lazy diagonal sprint)
+    {
+      id: 1,
+      number: "02",
+      pathPoint: [3600, 1400],
+      controlIn: [3100, 1250],
+      controlOut: [4100, 1550], // Mirrored: 2*(3600, 1400) - (3100, 1250)
+      textPosition: [2460, 1180],
+      textWidth: 440,
+      cardPosition: [2960, 1140],
+      cardWidth: 420,
+      photoHeight: 200,
+      cardRotation: 1.7,
+      cardShadow: "shadow-2xl",
+      cameraAnchor: [3050, 1400]
+    },
+    // Stop 03: "The Place" — mid left-center (wide descending turnaround sweep)
+    {
+      id: 2,
+      number: "03",
+      pathPoint: [2000, 2400],
+      controlIn: [2400, 2300],
+      controlOut: [1600, 2500], // Mirrored: 2*(2000, 2400) - (2400, 2300)
+      textPosition: [2240, 2180],
+      textWidth: 430,
+      cardPosition: [2730, 2140],
+      cardWidth: 450,
+      photoHeight: 220,
+      cardRotation: -0.8,
+      cardShadow: "shadow-xl",
+      cameraAnchor: [2480, 2400]
+    },
+    // Stop 04: "The Menu & Kitchen" — mid left (near-vertical plunge!)
+    {
+      id: 3,
+      number: "04",
+      pathPoint: [1500, 3300],
+      controlIn: [1450, 2900],
+      controlOut: [1550, 3700], // Mirrored: 2*(1500, 3300) - (1450, 2900)
+      textPosition: [1740, 3080],
+      textWidth: 440,
+      cardPosition: [2240, 3130],
+      cardWidth: 410,
+      photoHeight: 200,
+      cardRotation: 1.8,
+      cardShadow: "shadow-xl",
+      cameraAnchor: [2000, 3300]
+    },
+    // Stop 05: "The Brand & Space" — mid right (fast dynamic eastward sweep)
+    {
+      id: 4,
+      number: "05",
+      pathPoint: [3500, 4100],
+      controlIn: [3000, 4050],
+      controlOut: [4000, 4150], // Mirrored: 2*(3500, 4100) - (3000, 4050)
+      textPosition: [2360, 3880],
+      textWidth: 440,
+      cardPosition: [2860, 3840],
+      cardWidth: 450,
+      photoHeight: 230,
+      cardRotation: -1.6,
+      cardShadow: "shadow-2xl",
+      cameraAnchor: [2950, 4100]
+    },
+    // Stop 06: "The Team" — lower center (gentle hook)
+    {
+      id: 5,
+      number: "06",
+      pathPoint: [2400, 4900],
+      controlIn: [2800, 4800],
+      controlOut: [2000, 5000], // Mirrored: 2*(2400, 4900) - (2800, 4800)
+      textPosition: [2640, 4680],
+      textWidth: 430,
+      cardPosition: [3130, 4650],
+      cardWidth: 410,
+      photoHeight: 195,
+      cardRotation: 0.9,
+      cardShadow: "shadow-lg",
+      cameraAnchor: [2880, 4900]
+    },
+    // Stop 07: "The Launch" — lower left (descending turnaround)
+    {
+      id: 6,
+      number: "07",
+      pathPoint: [1300, 5700],
+      controlIn: [1350, 5350],
+      controlOut: [1250, 6050], // Mirrored: 2*(1300, 5700) - (1350, 5350)
+      textPosition: [1540, 5480],
+      textWidth: 440,
+      cardPosition: [2040, 5520],
+      cardWidth: 430,
+      photoHeight: 210,
+      cardRotation: -1.2,
+      cardShadow: "shadow-xl",
+      cameraAnchor: [1800, 5700]
+    },
+    // Stop 08: "The Expansion" — bottom right (grand finale arrival)
+    {
+      id: 7,
+      number: "08",
+      pathPoint: [3800, 6500],
+      controlIn: [3100, 6450],
+      textPosition: [2650, 6280],
+      textWidth: 450,
+      cardPosition: [3170, 6240],
+      cardWidth: 460,
+      photoHeight: 235,
+      cardRotation: 1.5,
+      cardShadow: "shadow-2xl",
+      cameraAnchor: [3250, 6500]
+    }
+  ] as StopConfig[]
 };
+
+// Builder: builds continuous C1 SVG path string with mirrored tangents
+function buildOrganicPathD(stops: StopConfig[]): string {
+  if (stops.length < 2) return '';
+  let d = `M ${stops[0].pathPoint[0]} ${stops[0].pathPoint[1]}`;
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const curr = stops[i];
+    const next = stops[i + 1];
+    const cpOut = curr.controlOut || [
+      curr.pathPoint[0] + (next.pathPoint[0] - curr.pathPoint[0]) * 0.35,
+      curr.pathPoint[1] + (next.pathPoint[1] - curr.pathPoint[1]) * 0.35
+    ];
+    const cpIn = next.controlIn || [
+      next.pathPoint[0] - (next.pathPoint[0] - curr.pathPoint[0]) * 0.35,
+      next.pathPoint[1] - (next.pathPoint[1] - curr.pathPoint[1]) * 0.35
+    ];
+    d += ` C ${cpOut[0]} ${cpOut[1]}, ${cpIn[0]} ${cpIn[1]}, ${next.pathPoint[0]} ${next.pathPoint[1]}`;
+  }
+
+  return d;
+}
+
+// Shortest angle difference handling ±180° wrap
+function shortestAngleDelta(target: number, current: number): number {
+  return ((((target - current + 540) % 360) - 180));
+}
+
+// Cubic smoothstep easing
+function smoothstep(min: number, max: number, value: number): number {
+  const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  return x * x * (3 - 2 * x);
+}
 
 interface FlightJourneyProps {
   onConsultStage: (stageIndex: number) => void;
@@ -61,36 +250,47 @@ interface FlightJourneyProps {
 export const FlightJourney: React.FC<FlightJourneyProps> = ({
   onConsultStage,
   onOpenServiceModal,
-  stopCount = 8 // ALL 8 STOPS (01 through 08)
+  stopCount = 8
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pinWrapperRef = useRef<HTMLDivElement>(null);
-  const planeRef = useRef<SVGGElement>(null);
-  const trailPathRef = useRef<SVGPathElement>(null);
-  const trailMaskPathRef = useRef<SVGPathElement>(null);
-  const forkGroupRef = useRef<SVGGElement>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
 
-  // Parallax Layer Refs
+  // Parallax Siblings (all sit at z-5 to z-15, BELOW World z-30)
   const farLayerRef = useRef<HTMLDivElement>(null);
   const midLayerRef = useRef<HTMLDivElement>(null);
   const nearLayerRef = useRef<HTMLDivElement>(null);
-  const cameraStageRef = useRef<HTMLDivElement>(null);
+
+  // SVG Elements
+  const pathRef = useRef<SVGPathElement>(null);
+  const trailMaskPathRef = useRef<SVGPathElement>(null);
+  const planeRef = useRef<SVGGElement>(null);
 
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Active stages (Stops 01 through 08)
-  const activeStages = useMemo(() => {
-    return JOURNEY_STAGES.slice(0, stopCount);
-  }, [stopCount]);
+  const smoothedAngleRef = useRef<number>(0);
+  
+  // Damped Camera Coordinates
+  const cameraStateRef = useRef({
+    currentX: 0,
+    currentY: 0,
+    targetX: 0,
+    targetY: 0
+  });
 
-  // Check reduced motion & mobile media query
+  const activeCount = Math.max(2, Math.min(8, stopCount));
+  const activeConfigs = useMemo(() => FLIGHT_CONFIG.stops.slice(0, activeCount), [activeCount]);
+  const activeStages = useMemo(() => JOURNEY_STAGES.slice(0, activeCount), [activeCount]);
+  const activePathD = useMemo(() => buildOrganicPathD(activeConfigs), [activeConfigs]);
+
+  // Motion preference & resize
   useEffect(() => {
     const mqMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     setIsReducedMotion(mqMotion.matches);
 
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < FLIGHT_CONFIG.mobileBreakpoint);
     };
     checkMobile();
 
@@ -104,9 +304,7 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
     };
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // LENIS SMOOTH SCROLL INITIALIZATION
-  // ---------------------------------------------------------------------------
+  // Lenis Smooth Scrolling
   useEffect(() => {
     if (isReducedMotion) return;
 
@@ -131,329 +329,284 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
     };
   }, [isReducedMotion]);
 
-  // ---------------------------------------------------------------------------
-  // GSAP SCROLLTRIGGER FLIGHT & MULTI-LAYER PARALLAX ENGINE (ALL 8 STOPS)
-  // ---------------------------------------------------------------------------
+  // Continuous Camera Damping via GSAP Ticker
   useEffect(() => {
-    if (isReducedMotion || !containerRef.current || !pinWrapperRef.current) return;
+    if (isReducedMotion) return;
 
-    // Calculate total path length for stroke dash animation
-    let pathLen = 5000;
-    if (trailPathRef.current) {
-      try {
-        pathLen = trailPathRef.current.getTotalLength();
-      } catch {
-        pathLen = 5000;
+    const updateCameraTick = () => {
+      const cam = cameraStateRef.current;
+      const factor = FLIGHT_CONFIG.cameraDamping;
+
+      cam.currentX += (cam.targetX - cam.currentX) * factor;
+      cam.currentY += (cam.targetY - cam.currentY) * factor;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const scaleW = vw / FLIGHT_CONFIG.refResolution.w;
+      const scaleH = (vh - 80) / 720;
+      const s = Math.max(0.60, Math.min(1.05, Math.min(scaleW, scaleH)));
+
+      if (worldRef.current) {
+        worldRef.current.style.transform = `translate3d(${cam.currentX}px, ${cam.currentY}px, 0) scale(${s})`;
+        worldRef.current.style.transformOrigin = '0 0';
       }
-    }
 
-    if (trailMaskPathRef.current) {
-      trailMaskPathRef.current.style.strokeDasharray = `${pathLen}`;
-      trailMaskPathRef.current.style.strokeDashoffset = `${pathLen}`;
-    }
-
-    const ctx = gsap.context(() => {
-      const pinWrapper = pinWrapperRef.current;
-      const totalStops = activeStages.length;
-      const totalScrollHeight = `${totalStops * FLIGHT_CONFIG.scrollVhPerStop}vh`;
-
-      // Master ScrollTrigger timeline pinned to the viewport
-      const masterTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: 'top top',
-          end: `+=${totalScrollHeight}`,
-          pin: pinWrapper,
-          scrub: FLIGHT_CONFIG.scrubLag,
-          anticipatePin: 1,
-          invalidateOnRefresh: true
-        }
-      });
-
-      // 1. Far Layer (Drifts slowly, soft scale)
       if (farLayerRef.current) {
-        masterTl.to(
-          farLayerRef.current,
-          {
-            y: -240 * FLIGHT_CONFIG.layerSpeeds.farClouds,
-            scale: 1.12,
-            ease: 'none'
-          },
-          0
-        );
+        farLayerRef.current.style.transform = `translate3d(${cam.currentX * FLIGHT_CONFIG.parallax.far}px, ${cam.currentY * FLIGHT_CONFIG.parallax.far}px, 0)`;
       }
-
-      // 2. Mid Layer (Medium speed outline clouds)
       if (midLayerRef.current) {
-        masterTl.to(
-          midLayerRef.current,
-          {
-            y: -600 * FLIGHT_CONFIG.layerSpeeds.midClouds,
-            ease: 'none'
-          },
-          0
-        );
+        midLayerRef.current.style.transform = `translate3d(${cam.currentX * FLIGHT_CONFIG.parallax.mid}px, ${cam.currentY * FLIGHT_CONFIG.parallax.mid}px, 0)`;
       }
-
-      // 3. Near Layer (Fast flying clouds scaling and sweeping past edges between stops)
       if (nearLayerRef.current) {
-        const nearClouds = nearLayerRef.current.querySelectorAll('.near-cloud');
-        nearClouds.forEach((cloud, i) => {
-          const dir = i % 2 === 0 ? -1 : 1;
-          masterTl.fromTo(
-            cloud,
-            { scale: 0.7, opacity: 0, x: 0, y: 200 },
-            {
-              scale: FLIGHT_CONFIG.scaleValues.nearCloudEnd,
-              opacity: 0.35,
-              x: dir * 240,
-              y: -500,
-              ease: 'power1.inOut',
-              repeat: Math.ceil(totalStops / 2),
-              yoyo: true
-            },
-            i * 0.15
-          );
-        });
+        const nearX = (cam.currentX * FLIGHT_CONFIG.parallax.near) % 900;
+        const nearY = (cam.currentY * FLIGHT_CONFIG.parallax.near) % 700;
+        nearLayerRef.current.style.transform = `translate3d(${nearX}px, ${nearY}px, 0)`;
       }
+    };
 
-      // 4. Trail & Paper Plane Flight Motion
-      if (trailPathRef.current && trailMaskPathRef.current && planeRef.current) {
-        const path = trailPathRef.current;
-        const mask = trailMaskPathRef.current;
-        const plane = planeRef.current;
-
-        const proxy = { progress: 0 };
-
-        masterTl.to(
-          proxy,
-          {
-            progress: 1,
-            ease: 'none',
-            onUpdate: () => {
-              const p = proxy.progress;
-              const currentDist = p * pathLen;
-              
-              // Unmask the trail ahead of the plane
-              mask.style.strokeDashoffset = `${pathLen * (1 - p)}`;
-
-              // Get current tangent angle and coordinates
-              const pt = path.getPointAtLength(currentDist);
-              const pNext = path.getPointAtLength(Math.min(pathLen, currentDist + 5));
-              const pPrev = path.getPointAtLength(Math.max(0, currentDist - 5));
-
-              const dx = pNext.x - pPrev.x;
-              const dy = pNext.y - pPrev.y;
-              const rad = Math.atan2(dy, dx);
-              const deg = (rad * 180) / Math.PI + 90; // Align plane nose
-
-              plane.setAttribute('transform', `translate(${pt.x}, ${pt.y}) rotate(${deg})`);
-              plane.style.opacity = p > 0.01 && p < 0.99 ? '1' : `${Math.max(0, p * 50)}`;
-
-              // Optional camera horizontal bank/pan between curves
-              if (cameraStageRef.current) {
-                const bankOffset = Math.sin(p * Math.PI * (totalStops - 1)) * 18;
-                cameraStageRef.current.style.transform = `translateX(${bankOffset}px)`;
-              }
-            }
-          },
-          0
-        );
-      }
-
-      // 5. Fork at Stage 08 (Expansion Hubs reveal)
-      if (forkGroupRef.current) {
-        masterTl.to(
-          forkGroupRef.current,
-          { opacity: 1, ease: 'power2.out', duration: 0.1 },
-          0.88
-        );
-      }
-
-      // 6. Sequential Transitions across ALL 8 STOPS (01 through 08)
-      const segmentDuration = 1 / totalStops;
-
-      activeStages.forEach((_, index) => {
-        const stopEl = document.getElementById(`flight-stop-${index}`);
-        if (!stopEl) return;
-
-        const numeralEl = stopEl.querySelector('.flight-numeral');
-        const cardEl = stopEl.querySelector('.flight-case-card');
-        const textEl = stopEl.querySelector('.flight-text-col');
-        const stampEl = stopEl.querySelector('.flight-stamp-node');
-
-        const stopStart = index * segmentDuration;
-        const stopEnd = (index + 1) * segmentDuration;
-
-        if (index === 0) {
-          // Stop 01 starts in-view
-          gsap.set(stopEl, { opacity: 1, zIndex: 10 });
-          gsap.set(cardEl, { scale: 1, y: 0, opacity: 1 });
-          gsap.set(textEl, { opacity: 1, y: 0 });
-          gsap.set(stampEl, { scale: 1, opacity: 1 });
-          if (numeralEl) gsap.set(numeralEl, { opacity: 0.14, scale: 1 });
-
-          // Exit transition as camera flies toward Stop 02
-          masterTl.to(
-            [textEl, cardEl, stampEl],
-            {
-              opacity: 0,
-              y: -45,
-              scale: 0.94,
-              ease: 'power2.in',
-              duration: segmentDuration * 0.3
-            },
-            stopEnd - segmentDuration * 0.3
-          );
-
-          if (numeralEl) {
-            masterTl.to(
-              numeralEl,
-              {
-                y: -90,
-                opacity: 0,
-                ease: 'power2.in',
-                duration: segmentDuration * 0.3
-              },
-              stopEnd - segmentDuration * 0.3
-            );
-          }
-        } else {
-          // Stops 02 through 08: Start hidden
-          gsap.set(stopEl, { opacity: 0, zIndex: 10 + index });
-          if (cardEl) gsap.set(cardEl, { scale: FLIGHT_CONFIG.scaleValues.cardStart, y: 40, opacity: 0 });
-          if (textEl) gsap.set(textEl, { opacity: 0, y: 30 });
-          if (stampEl) gsap.set(stampEl, { scale: 0.3, opacity: 0 });
-          if (numeralEl) gsap.set(numeralEl, { opacity: 0, scale: FLIGHT_CONFIG.scaleValues.numeralStart });
-
-          // Arrival Phase: Fade into view
-          masterTl.to(
-            stopEl,
-            { opacity: 1, duration: segmentDuration * 0.22, ease: 'power1.out' },
-            stopStart
-          );
-
-          // Pop in stamp icon tile at center node
-          if (stampEl) {
-            masterTl.to(
-              stampEl,
-              { scale: 1, opacity: 1, duration: segmentDuration * 0.25, ease: 'back.out(1.6)' },
-              stopStart + segmentDuration * 0.08
-            );
-          }
-
-          // Case study card scales in and settles
-          if (cardEl) {
-            masterTl.to(
-              cardEl,
-              {
-                scale: 1,
-                y: 0,
-                opacity: 1,
-                duration: segmentDuration * 0.3,
-                ease: 'power2.out'
-              },
-              stopStart + segmentDuration * 0.12
-            );
-          }
-
-          // Text column slides up
-          if (textEl) {
-            masterTl.to(
-              textEl,
-              { opacity: 1, y: 0, duration: segmentDuration * 0.28, ease: 'power2.out' },
-              stopStart + segmentDuration * 0.1
-            );
-          }
-
-          // Giant background numeral glides
-          if (numeralEl) {
-            masterTl.to(
-              numeralEl,
-              {
-                opacity: 0.14,
-                scale: FLIGHT_CONFIG.scaleValues.numeralEnd,
-                y: -30,
-                duration: segmentDuration * 0.4,
-                ease: 'sine.out'
-              },
-              stopStart + segmentDuration * 0.08
-            );
-          }
-
-          // Exit transition (except for Stop 08 which is the final destination)
-          if (index < totalStops - 1) {
-            masterTl.to(
-              [textEl, cardEl, stampEl],
-              {
-                opacity: 0,
-                y: -45,
-                scale: 0.94,
-                ease: 'power2.in',
-                duration: segmentDuration * 0.3
-              },
-              stopEnd - segmentDuration * 0.3
-            );
-
-            if (numeralEl) {
-              masterTl.to(
-                numeralEl,
-                {
-                  y: -90,
-                  opacity: 0,
-                  ease: 'power2.in',
-                  duration: segmentDuration * 0.3
-                },
-                stopEnd - segmentDuration * 0.3
-              );
-            }
-          }
-        }
-      });
-    }, containerRef);
+    gsap.ticker.add(updateCameraTick);
 
     return () => {
-      ctx.revert();
+      gsap.ticker.remove(updateCameraTick);
     };
-  }, [isReducedMotion, activeStages]);
+  }, [isReducedMotion]);
 
+  // GSAP ScrollTrigger Flight Engine
+  useEffect(() => {
+    if (isReducedMotion || !containerRef.current || !pinWrapperRef.current || !pathRef.current) return;
+
+    const pathEl = pathRef.current;
+    const totalPathLen = pathEl.getTotalLength();
+
+    if (trailMaskPathRef.current) {
+      trailMaskPathRef.current.style.strokeDasharray = `${totalPathLen}`;
+      trailMaskPathRef.current.style.strokeDashoffset = `${totalPathLen}`;
+    }
+
+    const totalSegments = activeCount - 1;
+
+    // Viewport responsive scale factor
+    const getScaleFactor = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const scaleW = vw / FLIGHT_CONFIG.refResolution.w;
+      const scaleH = (vh - 80) / 720;
+      return Math.max(0.60, Math.min(1.05, Math.min(scaleW, scaleH)));
+    };
+
+    let scaleFactor = getScaleFactor();
+
+    // Master ScrollTrigger
+    const trigger = ScrollTrigger.create({
+      trigger: containerRef.current,
+      start: 'top top',
+      end: () => `+=${activeCount * window.innerHeight * FLIGHT_CONFIG.scrollVhPerStop}`,
+      pin: pinWrapperRef.current,
+      scrub: FLIGHT_CONFIG.scrub,
+      anticipatePin: 1,
+      invalidateOnRefresh: true,
+      onRefresh: () => {
+        scaleFactor = getScaleFactor();
+      },
+      onUpdate: (self) => {
+        const rawScroll = self.progress;
+
+        // Smooth piecewise remap with smoothstep easing (no step changes in speed)
+        let flightProgress = 0;
+        let isDwell = false;
+        let currentStopIdx = 0;
+
+        const startHold = 0.045;
+        const endHold = 0.055;
+        const dwellHalf = 0.024;
+
+        if (rawScroll <= startHold) {
+          flightProgress = 0;
+          isDwell = true;
+          currentStopIdx = 0;
+        } else if (rawScroll >= 1.0 - endHold) {
+          flightProgress = 1.0;
+          isDwell = true;
+          currentStopIdx = activeCount - 1;
+        } else {
+          // Remap interior scroll span smoothly
+          const effectiveScroll = (rawScroll - startHold) / (1.0 - startHold - endHold);
+          const nominalStopPos = effectiveScroll * totalSegments;
+          const nearestStop = Math.round(nominalStopPos);
+          const distToStop = Math.abs(nominalStopPos - nearestStop);
+
+          if (distToStop < dwellHalf * totalSegments) {
+            flightProgress = nearestStop / totalSegments;
+            isDwell = true;
+            currentStopIdx = nearestStop;
+          } else {
+            // Smooth transit curve
+            flightProgress = nominalStopPos / totalSegments;
+            isDwell = false;
+            currentStopIdx = Math.floor(nominalStopPos);
+          }
+        }
+
+        const clampedProgress = Math.max(0, Math.min(1, flightProgress));
+        const currentDist = clampedProgress * totalPathLen;
+
+        // 1. Trail Progressive Reveal
+        if (trailMaskPathRef.current) {
+          const leadAhead = Math.min(1, clampedProgress + FLIGHT_CONFIG.trail.leadAhead);
+          trailMaskPathRef.current.style.strokeDashoffset = `${totalPathLen * (1 - leadAhead)}`;
+        }
+
+        // 2. Sample plane position & banking angle
+        const pt = pathEl.getPointAtLength(currentDist);
+        const sampleOffset = 8;
+        const pNext = pathEl.getPointAtLength(Math.min(totalPathLen, currentDist + sampleOffset));
+        const pPrev = pathEl.getPointAtLength(Math.max(0, currentDist - sampleOffset));
+
+        const dx = pNext.x - pPrev.x;
+        const dy = pNext.y - pPrev.y;
+        const rawRad = Math.atan2(dy, dx);
+        const rawDeg = (rawRad * 180) / Math.PI + 90;
+
+        const angleDiff = shortestAngleDelta(rawDeg, smoothedAngleRef.current);
+        smoothedAngleRef.current += angleDiff * FLIGHT_CONFIG.plane.rotationLerp;
+
+        if (planeRef.current) {
+          planeRef.current.setAttribute(
+            'transform',
+            `translate(${pt.x}, ${pt.y}) rotate(${smoothedAngleRef.current})`
+          );
+        }
+
+        // 3. Camera Target using Camera Anchors from Stop Configs
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        const segIdx = Math.min(totalSegments - 1, Math.max(0, Math.floor(clampedProgress * totalSegments)));
+        const segT = (clampedProgress * totalSegments) - segIdx;
+        const currAnchor = activeConfigs[segIdx].cameraAnchor;
+        const nextAnchor = activeConfigs[segIdx + 1]?.cameraAnchor || currAnchor;
+
+        // Smooth cubic blend between stop camera anchors
+        const smoothT = smoothstep(0, 1, segT);
+        const anchorX = currAnchor[0] + (nextAnchor[0] - currAnchor[0]) * smoothT;
+        const anchorY = currAnchor[1] + (nextAnchor[1] - currAnchor[1]) * smoothT;
+
+        // Vertical centering in the clear zone below fixed nav (80px)
+        const navHeight = 80 * scaleFactor;
+        const availableHeight = vh - navHeight;
+        const camCenterY = navHeight + (availableHeight / 2);
+
+        // Update Target (Damped follow lerps smoothly toward this)
+        cameraStateRef.current.targetX = -anchorX * scaleFactor + vw / 2;
+        cameraStateRef.current.targetY = -anchorY * scaleFactor + camCenterY;
+
+        // Near clouds fade out during dwell so text is 100% crisp
+        if (nearLayerRef.current) {
+          nearLayerRef.current.style.opacity = isDwell ? '0' : '0.40';
+        }
+
+        // Subtle scale entrance for content (finishes well before dwell)
+        activeConfigs.forEach((cfg, idx) => {
+          const stopNominal = idx / totalSegments;
+          const dist = Math.abs(clampedProgress - stopNominal);
+          const stopEl = document.getElementById(`world-stop-${idx}`);
+          if (!stopEl) return;
+          const scale = dist < 0.14 ? 0.96 + 0.04 * (1 - dist / 0.14) : 0.96;
+          stopEl.style.transform = `scale(${Math.min(1.0, scale)})`;
+        });
+      }
+    });
+
+    if (document.fonts) {
+      document.fonts.ready.then(() => {
+        ScrollTrigger.refresh();
+      });
+    }
+
+    return () => {
+      trigger.kill();
+    };
+  }, [isReducedMotion, activeCount, activeConfigs, activeStages]);
+
+  // ===========================================================================
+  // REDUCED MOTION STATIC FALLBACK
+  // ===========================================================================
+  if (isReducedMotion) {
+    return (
+      <section id="journey" className="relative bg-[#FAF8F5] py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto space-y-16">
+          {activeStages.map((stage, idx) => {
+            const Stamp = STAMP_ICONS[stage.stampIcon] || Lightbulb;
+            const isEven = idx % 2 === 0;
+            return (
+              <div 
+                key={stage.id} 
+                className="grid md:grid-cols-12 gap-8 items-start py-8 border-b border-[#EAEAEA]"
+              >
+                <div className={`md:col-span-6 ${isEven ? 'md:order-1' : 'md:order-2'}`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="font-mono text-3xl font-extrabold text-[#847445]">{stage.number}</span>
+                    <div className="w-10 h-10 rounded-xl bg-[#847445]/10 text-[#847445] flex items-center justify-center shrink-0 border border-[#847445]/20">
+                      <Stamp className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <h3 className="font-display font-black text-2xl text-[#14181F]">{stage.title}</h3>
+                  </div>
+                  <p className="text-sm font-serif italic text-slate-500 mb-3">"{stage.tagline}"</p>
+                  <p className="text-slate-600 text-sm leading-relaxed mb-4">{stage.description}</p>
+                  <button
+                    onClick={() => onConsultStage(stage.id)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#847445] text-white text-xs font-bold"
+                  >
+                    <span>Consult on {stage.title}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className={`md:col-span-6 ${isEven ? 'md:order-2' : 'md:order-1'}`}>
+                  <div className="rounded-2xl overflow-hidden border border-[#EAEAEA] bg-white p-4 shadow-sm">
+                    <img src={stage.proofProject.image} alt={stage.proofProject.name} className="w-full h-52 object-cover rounded-xl mb-3" />
+                    <div className="text-xs font-bold text-slate-900">{stage.proofProject.name}</div>
+                    <div className="text-xs text-slate-500">{stage.proofProject.caption}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
+  // ===========================================================================
+  // INTERACTIVE FLIGHT EXPERIENCE
+  // ===========================================================================
   return (
     <section
       id="journey"
       ref={containerRef}
-      className={`relative bg-gradient-to-b from-[#FAF8F5] via-[#F6F1E8] to-[#FAF8F5] text-[#14181F] ${
-        isReducedMotion ? 'py-20' : 'h-[900vh]'
-      }`}
+      className="relative w-full bg-[#FAF8F5] text-[#14181F]"
     >
-      {/* PINNED STAGE VIEWPORT (Full-Screen Flight Stage) */}
+      {/* PINNED VIEWPORT (100vw × 100vh) */}
       <div
         ref={pinWrapperRef}
-        className={`${
-          isReducedMotion ? 'relative' : 'sticky top-0 h-screen'
-        } w-full overflow-hidden flex flex-col justify-center`}
+        className="relative w-full h-screen overflow-hidden flex items-center justify-center"
       >
-
         {/* -------------------------------------------------------------------
-            DEPTH LAYER 1: FAR LAYER (Large faint outline clouds & radial glow)
+            1. FAR LAYER (z-5, BELOW World z-30)
         -------------------------------------------------------------------- */}
-        <div 
-          ref={farLayerRef} 
-          className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+        <div
+          ref={farLayerRef}
+          className="absolute inset-0 pointer-events-none z-5 overflow-hidden"
+          style={{ willChange: 'transform' }}
         >
-          {/* Ambient Warm Golden/Cream Glows */}
-          <div className="absolute top-1/4 left-1/5 w-[500px] h-[500px] rounded-full bg-[#847445]/6 blur-[120px]" />
-          <div className="absolute bottom-1/3 right-1/4 w-[600px] h-[600px] rounded-full bg-[#C5A869]/8 blur-[140px]" />
-
-          {/* Large Faint SVG Outline Clouds (Speed: Slowest) */}
-          <svg className="w-full h-full opacity-40" viewBox="0 0 1440 900" fill="none">
-            {/* Far Cloud Left */}
+          <div className="absolute top-1/4 left-1/4 w-[650px] h-[650px] rounded-full bg-[#847445]/6 blur-[150px]" />
+          <div className="absolute bottom-1/3 right-1/4 w-[750px] h-[750px] rounded-full bg-[#C5A869]/8 blur-[160px]" />
+          <svg className="w-full h-full opacity-35" viewBox="0 0 1440 900" fill="none">
             <path
               d="M120 320 C140 280, 200 270, 240 300 C270 270, 330 270, 360 310 C390 300, 440 330, 430 370 C440 410, 390 440, 350 440 L140 440 C100 440, 80 400, 100 360 C90 340, 105 325, 120 320 Z"
               stroke="#D9D4C7"
               strokeWidth="1.5"
               fill="rgba(255, 255, 255, 0.45)"
             />
-            {/* Far Cloud Right */}
             <path
               d="M1020 180 C1040 140, 1100 130, 1140 160 C1170 130, 1230 130, 1260 170 C1290 160, 1340 190, 1330 230 C1340 270, 1290 300, 1250 300 L1040 300 C1000 300, 980 260, 1000 220 C990 200, 1005 185, 1020 180 Z"
               stroke="#D9D4C7"
@@ -464,30 +617,29 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
         </div>
 
         {/* -------------------------------------------------------------------
-            DEPTH LAYER 2: MID LAYER (Normal outline clouds, medium speed)
+            2. MID LAYER (z-10, BELOW World z-30)
         -------------------------------------------------------------------- */}
-        <div 
-          ref={midLayerRef} 
-          className="absolute inset-0 pointer-events-none z-1 overflow-hidden"
+        <div
+          ref={midLayerRef}
+          className="absolute inset-0 pointer-events-none z-10 overflow-hidden"
+          style={{ willChange: 'transform' }}
         >
-          <svg className="w-full h-full opacity-70" viewBox="0 0 1440 900" fill="none">
-            {/* Mid Cloud Upper Center */}
-            <g transform="translate(680, 100) scale(0.9)">
+          <svg className="w-full h-full opacity-65" viewBox="0 0 1440 900" fill="none">
+            <g transform="translate(680, 120) scale(0.95)">
               <path
                 d="M 20 40 A 15 15 0 0 1 45 25 A 25 25 0 0 1 85 25 A 15 15 0 0 1 110 40 A 12 12 0 0 1 100 55 L 25 55 A 12 12 0 0 1 20 40 Z"
                 fill="#FFFFFF"
-                fillOpacity="0.9"
+                fillOpacity="0.85"
                 stroke="#D9D4C7"
                 strokeWidth="1.5"
                 strokeLinejoin="round"
               />
             </g>
-            {/* Mid Cloud Lower Center */}
-            <g transform="translate(420, 680) scale(0.95)">
+            <g transform="translate(380, 640) scale(1.0)">
               <path
                 d="M 20 40 A 15 15 0 0 1 45 25 A 25 25 0 0 1 85 25 A 15 15 0 0 1 110 40 A 12 12 0 0 1 100 55 L 25 55 A 12 12 0 0 1 20 40 Z"
                 fill="#FFFFFF"
-                fillOpacity="0.9"
+                fillOpacity="0.85"
                 stroke="#D9D4C7"
                 strokeWidth="1.5"
                 strokeLinejoin="round"
@@ -497,285 +649,256 @@ export const FlightJourney: React.FC<FlightJourneyProps> = ({
         </div>
 
         {/* -------------------------------------------------------------------
-            FLIGHT PATH & MOVING PAPER PLANE (The Spine Across All 8 Stops)
+            3. NEAR LAYER (z-15, BELOW World z-30, Fades out during dwell)
         -------------------------------------------------------------------- */}
-        {!isReducedMotion && (
-          <div className="absolute inset-0 pointer-events-none z-5">
-            <svg 
-              className="w-full h-full" 
-              viewBox="0 0 1000 1900" 
-              preserveAspectRatio="none"
-              fill="none"
-            >
-              <defs>
-                <mask id="flight-trail-mask-all">
-                  <path
-                    ref={trailMaskPathRef}
-                    d="M 500 50
-                       C 400 120, 360 200, 500 280
-                       C 640 360, 640 440, 500 520
-                       C 360 600, 360 680, 500 760
-                       C 640 840, 640 920, 500 1000
-                       C 360 1080, 360 1160, 500 1240
-                       C 640 1320, 640 1400, 500 1480
-                       C 360 1560, 400 1640, 500 1720
-                       L 500 1850"
-                    stroke="#FFFFFF"
-                    strokeWidth="32"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-                </mask>
-              </defs>
-
-              {/* Guide path for sampling points & tangents */}
-              <path
-                ref={trailPathRef}
-                d="M 500 50
-                   C 400 120, 360 200, 500 280
-                   C 640 360, 640 440, 500 520
-                   C 360 600, 360 680, 500 760
-                   C 640 840, 640 920, 500 1000
-                   C 360 1080, 360 1160, 500 1240
-                   C 640 1320, 640 1400, 500 1480
-                   C 360 1560, 400 1640, 500 1720
-                   L 500 1850"
-                stroke="transparent"
-                strokeWidth="1"
-              />
-
-              {/* Dotted Flight Path that draws ahead of plane */}
-              <path
-                d="M 500 50
-                   C 400 120, 360 200, 500 280
-                   C 640 360, 640 440, 500 520
-                   C 360 600, 360 680, 500 760
-                   C 640 840, 640 920, 500 1000
-                   C 360 1080, 360 1160, 500 1240
-                   C 640 1320, 640 1400, 500 1480
-                   C 360 1560, 400 1640, 500 1720
-                   L 500 1850"
-                stroke="#847445"
-                strokeWidth="3"
-                strokeDasharray="2 12"
-                strokeLinecap="round"
-                fill="none"
-                mask="url(#flight-trail-mask-all)"
-              />
-
-              {/* FORK AT STAGE 08 IN OFFICIAL LOGO COLOR */}
-              <g 
-                ref={forkGroupRef} 
-                style={{ opacity: 0 }}
-                className="transition-opacity duration-500 ease-out"
-              >
-                <path d="M 500 1850 C 460 1870, 360 1890, 260 1910" stroke="#847445" strokeWidth="2.5" strokeDasharray="3 6" strokeLinecap="round" />
-                <path d="M 500 1850 C 480 1870, 440 1890, 420 1910" stroke="#847445" strokeWidth="2.5" strokeDasharray="3 6" strokeLinecap="round" />
-                <path d="M 500 1850 C 520 1870, 560 1890, 580 1910" stroke="#847445" strokeWidth="2.5" strokeDasharray="3 6" strokeLinecap="round" />
-                <path d="M 500 1850 C 540 1870, 640 1890, 740 1910" stroke="#847445" strokeWidth="2.5" strokeDasharray="3 6" strokeLinecap="round" />
-
-                <circle cx="260" cy="1910" r="4" fill="#847445" />
-                <circle cx="420" cy="1910" r="4" fill="#847445" />
-                <circle cx="580" cy="1910" r="4" fill="#847445" />
-                <circle cx="740" cy="1910" r="4" fill="#847445" />
-              </g>
-
-              {/* Moving Origami Paper Plane with Logo Gold Accent Tip */}
-              <g 
-                ref={planeRef} 
-                className="pointer-events-none"
-                style={{ opacity: 0 }}
-              >
-                {/* Plane Shadow */}
-                <g transform="translate(3, 6) scale(0.24) translate(-110, -90)" opacity="0.16">
-                  <path d="M110 20 L25 140 L110 115 Z" fill="#000000" />
-                  <path d="M110 20 L195 140 L110 115 Z" fill="#000000" />
-                  <path d="M110 20 L110 160 L102 116 Z" fill="#000000" />
-                  <path d="M110 20 L110 160 L118 116 Z" fill="#000000" />
-                </g>
-
-                {/* Plane Wings */}
-                <g transform="scale(0.24) translate(-110, -90)">
-                  <path d="M110 20 L25 140 L110 115 Z" fill="#FFFFFF" stroke="#D1C7BA" strokeWidth="2" />
-                  <path d="M110 20 L195 140 L110 115 Z" fill="#F8F7F4" stroke="#D1C7BA" strokeWidth="2" />
-                  <path d="M110 20 L110 160 L102 116 Z" fill="#E8E4DA" />
-                  <path d="M110 20 L110 160 L118 116 Z" fill="#D6D0C2" />
-                  {/* CYK Brand Olive-Gold Nose Tip */}
-                  <path d="M110 20 L102 45 L118 45 Z" fill="#847445" />
-                </g>
-              </g>
-            </svg>
-          </div>
-        )}
+        <div
+          ref={nearLayerRef}
+          className="absolute inset-0 pointer-events-none z-15 overflow-hidden transition-opacity duration-300"
+          style={{ willChange: 'transform, opacity' }}
+        >
+          <div
+            className="near-cloud absolute -bottom-10 -right-20 w-[440px] h-[280px] rounded-full bg-white/70 blur-2xl pointer-events-none"
+            style={{ willChange: 'transform' }}
+          />
+          {!isMobile && (
+            <div
+              className="near-cloud absolute -top-16 -left-24 w-[500px] h-[320px] rounded-full bg-white/60 blur-3xl pointer-events-none"
+              style={{ willChange: 'transform' }}
+            />
+          )}
+          {!isMobile && (
+            <div
+              className="near-cloud absolute top-1/2 right-1/3 w-[360px] h-[220px] rounded-full bg-white/50 blur-2xl pointer-events-none"
+              style={{ willChange: 'transform' }}
+            />
+          )}
+        </div>
 
         {/* -------------------------------------------------------------------
-            STAGE CONTENT STOPS (Z-Pinned Destinations 01 through 08)
+            4. WORLD CONTAINER (z-30, In Front of all Clouds & Glows)
         -------------------------------------------------------------------- */}
-        <div 
-          ref={cameraStageRef}
-          className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 transition-transform duration-200"
+        <div
+          ref={worldRef}
+          className="absolute top-0 left-0 pointer-events-auto z-30"
+          style={{
+            width: `${FLIGHT_CONFIG.world.baseW}px`,
+            height: `${FLIGHT_CONFIG.world.baseH}px`
+          }}
         >
-          {/* Section Heading Badge */}
-          <div className="absolute -top-16 sm:-top-20 left-4 sm:left-8 z-30">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-[#EAEAEA] shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-[#847445] animate-pulse" />
-              <span className="font-mono text-xs font-bold text-[#847445] uppercase tracking-wider">
-                The Growth Flight
-              </span>
-            </div>
-          </div>
+          {/* Continuous SVG Flight Path & Paper Plane (z-10 inside world) */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10"
+            viewBox={`0 0 ${FLIGHT_CONFIG.world.baseW} ${FLIGHT_CONFIG.world.baseH}`}
+            fill="none"
+          >
+            <defs>
+              <mask id="world-trail-reveal-mask">
+                <rect x="-1000" y="-1000" width="7600" height="9400" fill="black" />
+                <path
+                  ref={trailMaskPathRef}
+                  d={activePathD}
+                  stroke="white"
+                  strokeWidth="52"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </mask>
+            </defs>
 
-          {activeStages.map((stage, index) => {
+            <path
+              ref={pathRef}
+              d={activePathD}
+              stroke="transparent"
+              strokeWidth="1"
+              fill="none"
+            />
+
+            {/* Faint Full Dotted Trail */}
+            <path
+              d={activePathD}
+              stroke="#847445"
+              strokeWidth="3"
+              strokeDasharray="3 14"
+              strokeLinecap="round"
+              opacity={FLIGHT_CONFIG.trail.faintOpacity}
+              fill="none"
+            />
+
+            {/* Bright Revealed Dotted Trail */}
+            <path
+              d={activePathD}
+              stroke="#847445"
+              strokeWidth="3.5"
+              strokeDasharray="3 14"
+              strokeLinecap="round"
+              opacity={FLIGHT_CONFIG.trail.brightOpacity}
+              fill="none"
+              mask="url(#world-trail-reveal-mask)"
+            />
+
+            {/* Moving Origami Paper Plane with Gold Nose Tip */}
+            <g ref={planeRef} className="pointer-events-none" style={{ willChange: 'transform' }}>
+              <g transform="translate(4, 8) scale(0.24) translate(-110, -90)" opacity="0.18">
+                <path d="M110 20 L25 140 L110 115 Z" fill="#000000" />
+                <path d="M110 20 L195 140 L110 115 Z" fill="#000000" />
+                <path d="M110 20 L110 160 L102 116 Z" fill="#000000" />
+                <path d="M110 20 L110 160 L118 116 Z" fill="#000000" />
+              </g>
+              <g transform="scale(0.24) translate(-110, -90)">
+                <path d="M110 20 L25 140 L110 115 Z" fill="#FFFFFF" stroke="#D1C7BA" strokeWidth="2" />
+                <path d="M110 20 L195 140 L110 115 Z" fill="#F8F7F4" stroke="#D1C7BA" strokeWidth="2" />
+                <path d="M110 20 L110 160 L102 116 Z" fill="#E8E4DA" />
+                <path d="M110 20 L110 160 L118 116 Z" fill="#D6D0C2" />
+                <path d="M110 20 L102 45 L118 45 Z" fill="#847445" />
+              </g>
+            </g>
+          </svg>
+
+          {/* EDITORIAL STOP LAYOUTS (NO TEXT BOX CONTAINER, ROTATED PHOTO CARDS, z-20) */}
+          {activeConfigs.map((cfg, idx) => {
+            const stage = activeStages[idx];
+            if (!stage) return null;
             const Stamp = STAMP_ICONS[stage.stampIcon] || Lightbulb;
-            const isEven = index % 2 === 0;
 
             return (
               <div
                 key={stage.id}
-                id={`flight-stop-${index}`}
-                className="absolute inset-0 flex items-center justify-center pointer-events-auto transition-opacity duration-300"
-                style={{ opacity: index === 0 ? 1 : 0 }}
+                id={`world-stop-${idx}`}
+                className="absolute pointer-events-auto z-20 transition-transform duration-200"
+                style={{
+                  left: 0,
+                  top: 0,
+                  width: `${FLIGHT_CONFIG.world.baseW}px`,
+                  height: `${FLIGHT_CONFIG.world.baseH}px`,
+                  opacity: 1 // Permanent opacity 1.0 (no ghosting, camera pan handles exit)
+                }}
               >
-                {/* GIANT OUTLINED BACKGROUND NUMERAL (Depth Layer: Behind content) */}
-                <div 
-                  className={`flight-numeral absolute select-none pointer-events-none font-mono font-black text-[160px] sm:text-[240px] md:text-[300px] leading-none ${
-                    isEven ? 'right-4 sm:right-12' : 'left-4 sm:left-12'
-                  } top-1/2 -translate-y-1/2 text-transparent z-0`}
+                {/* GIANT OUTLINED BACKGROUND NUMERAL BEHIND TEXT */}
+                <div
+                  className="flight-numeral absolute select-none pointer-events-none font-mono font-black text-[230px] leading-none text-transparent z-0"
                   style={{
-                    WebkitTextStroke: '2px rgba(132, 116, 69, 0.18)',
-                    opacity: 0.14
+                    left: `${cfg.textPosition[0] - 40}px`,
+                    top: `${cfg.textPosition[1] - 110}px`,
+                    WebkitTextStroke: '2px rgba(132, 116, 69, 0.16)',
+                    opacity: 0.15
                   }}
                 >
                   {stage.number}
                 </div>
 
-                {/* DESTINATION CONTENT GRID */}
-                <div className="relative z-10 w-full grid md:grid-cols-12 gap-6 sm:gap-10 md:gap-14 items-center">
-                  
-                  {/* Center Node Stamp Tile (Pops in at path center) */}
-                  <div className="flight-stamp-node hidden md:flex absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
-                    <div className="w-14 h-14 rounded-2xl bg-white/95 backdrop-blur-md border border-[#EAEAEA] text-[#847445] flex items-center justify-center shadow-lg shadow-[#847445]/10">
-                      <Stamp className="w-6 h-6 stroke-[2.2]" />
+                {/* 1. FLOATING EDITORIAL TEXT COLUMN (NO BOX CONTAINER) */}
+                <div
+                  className="absolute z-10 space-y-4"
+                  style={{
+                    left: `${cfg.textPosition[0]}px`,
+                    top: `${cfg.textPosition[1]}px`,
+                    width: `${cfg.textWidth}px`
+                  }}
+                >
+                  {/* Title Row with Integrated Stamp Tile */}
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-3xl font-extrabold text-[#847445]">
+                      {stage.number}
+                    </span>
+                    <div className="w-10 h-10 rounded-xl bg-white/95 text-[#847445] flex items-center justify-center shrink-0 border border-[#847445]/20 shadow-2xs">
+                      <Stamp className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <h3 className="font-display font-black text-2xl sm:text-3xl text-[#14181F] tracking-tight">
+                      {stage.title}
+                    </h3>
+                  </div>
+
+                  {/* Italic Tagline */}
+                  <p className="text-xs sm:text-sm font-serif italic text-slate-500">
+                    "{stage.tagline}"
+                  </p>
+
+                  {/* High Contrast Description */}
+                  <p className="text-[#14181F]/85 text-xs sm:text-sm leading-relaxed">
+                    {stage.description}
+                  </p>
+
+                  {/* CYK Services */}
+                  <div className="pt-1.5">
+                    <div className="text-xs text-slate-600">
+                      <span className="font-semibold text-slate-800">Services: </span>
+                      <span>{stage.cykServices.join(', ')}</span>
                     </div>
                   </div>
 
-                  {/* Left/Right Text Column */}
-                  <div className={`flight-text-col md:col-span-5 ${isEven ? 'md:order-1' : 'md:order-2 md:col-start-8'}`}>
-                    <div className="space-y-3 sm:space-y-4 bg-white/75 md:bg-transparent p-6 md:p-0 rounded-2xl backdrop-blur-sm md:backdrop-blur-none border border-[#EAEAEA]/80 md:border-0 shadow-xs md:shadow-none">
-                      
-                      <div className="flex items-baseline gap-3">
-                        <span className="font-mono text-3xl sm:text-4xl font-extrabold text-[#847445]">
-                          {stage.number}
-                        </span>
-                        <h3 className="font-display font-black text-2xl sm:text-3xl lg:text-4xl text-[#14181F] tracking-tight">
-                          {stage.title}
-                        </h3>
-                      </div>
-
-                      <p className="text-xs sm:text-sm font-serif italic text-slate-500">
-                        "{stage.tagline}"
-                      </p>
-
-                      <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                        {stage.description}
-                      </p>
-
-                      {/* Services Pills */}
-                      <div className="pt-1">
-                        <div className="text-xs text-slate-500">
-                          <span className="font-semibold text-slate-700">Services: </span>
-                          <span>{stage.cykServices.join(', ')}</span>
-                        </div>
-                      </div>
-
-                      {/* Deliverables Bullet List */}
-                      <div className="pt-1">
-                        <ul className="text-xs text-slate-700 space-y-1.5">
-                          {stage.deliverables.slice(0, 3).map((item, dIdx) => (
-                            <li key={dIdx} className="flex items-start gap-2">
-                              <span className="text-[#847445] font-bold mt-0.5">•</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Interactive CTA */}
-                      <div className="pt-2">
-                        <button
-                          onClick={() => onConsultStage(stage.id)}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#847445]/10 hover:bg-[#847445] text-[#847445] hover:text-white text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs group"
-                        >
-                          <span>Consult on {stage.title}</span>
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                      </div>
-                    </div>
+                  {/* Key Deliverables Bullet Points */}
+                  <div className="pt-1">
+                    <ul className="text-xs text-slate-700 space-y-1">
+                      {stage.deliverables.slice(0, 3).map((item, dIdx) => (
+                        <li key={dIdx} className="flex items-start gap-2">
+                          <span className="text-[#847445] font-bold mt-0.5">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
-                  {/* Right/Left Foreground Case Study Card */}
-                  <div className={`flight-case-card md:col-span-5 ${isEven ? 'md:order-2 md:col-start-8' : 'md:order-1'}`}>
-                    <div className="bg-white/92 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-xl shadow-black/5 border border-[#EAEAEA] transition-shadow duration-300 hover:shadow-2xl">
-                      
-                      {/* Real Case Study Photo */}
-                      <div className="h-44 sm:h-52 rounded-xl overflow-hidden mb-3.5 bg-slate-100 relative group">
-                        <img 
-                          src={stage.proofProject.image} 
-                          alt={stage.proofProject.name}
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                        />
-                        <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white font-medium uppercase tracking-wider">
-                          {stage.proofProject.type}
-                        </div>
-                      </div>
-
-                      {/* Caption */}
-                      <div className="text-xs sm:text-sm text-slate-700 leading-snug">
-                        <strong className="text-slate-900 font-bold">{stage.proofProject.name}: </strong> 
-                        {stage.proofProject.caption}
-                      </div>
-
-                      {/* Verbatim Client Quote */}
-                      {stage.clientQuote && (
-                        <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-start gap-2.5">
-                          <Quote className="w-4 h-4 text-[#847445] shrink-0 mt-0.5" />
-                          <div className="text-[11px] sm:text-xs text-slate-600 italic leading-relaxed">
-                            "{stage.clientQuote.text}"
-                            <span className="block not-italic font-semibold text-slate-800 mt-1">
-                              — {stage.clientQuote.author}, {stage.clientQuote.brand}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                  {/* Interactive CTA */}
+                  <div className="pt-3">
+                    <button
+                      onClick={() => onConsultStage(stage.id)}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#847445] hover:bg-[#6E6038] text-white text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs group"
+                    >
+                      <span>Consult on {stage.title}</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </button>
                   </div>
-
                 </div>
+
+                {/* 2. CASE-STUDY PHOTO CARD (Diagonally offset, slightly rotated, auto-height) */}
+                <div
+                  className={`absolute z-10 bg-white rounded-2xl p-5 border border-[#EAEAEA] ${cfg.cardShadow} transition-transform duration-300 hover:rotate-0`}
+                  style={{
+                    left: `${cfg.cardPosition[0]}px`,
+                    top: `${cfg.cardPosition[1]}px`,
+                    width: `${cfg.cardWidth}px`,
+                    transform: `rotate(${cfg.cardRotation}deg)`
+                  }}
+                >
+                  {/* Photo with Custom Sized Height per stop */}
+                  <div 
+                    className="rounded-xl overflow-hidden mb-3.5 bg-slate-100 relative group"
+                    style={{ height: `${cfg.photoHeight}px` }}
+                  >
+                    <img
+                      src={stage.proofProject.image}
+                      alt={stage.proofProject.name}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white font-medium uppercase tracking-wider">
+                      {stage.proofProject.type}
+                    </div>
+                  </div>
+
+                  {/* Caption */}
+                  <div className="text-xs sm:text-sm text-slate-700 leading-snug">
+                    <strong className="text-slate-900 font-bold">{stage.proofProject.name}: </strong>
+                    {stage.proofProject.caption}
+                  </div>
+
+                  {/* Verbatim Quote */}
+                  {stage.clientQuote && (
+                    <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-start gap-2.5">
+                      <Quote className="w-4 h-4 text-[#847445] shrink-0 mt-0.5" />
+                      <div className="text-[11px] text-slate-600 italic leading-relaxed">
+                        "{stage.clientQuote.text}"
+                        <span className="block not-italic font-semibold text-slate-800 mt-1">
+                          — {stage.clientQuote.author}, {stage.clientQuote.brand}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             );
           })}
-        </div>
-
-        {/* -------------------------------------------------------------------
-            DEPTH LAYER 3: NEAR LAYER (Blurred clouds sweeping past camera)
-        -------------------------------------------------------------------- */}
-        <div 
-          ref={nearLayerRef}
-          className="absolute inset-0 pointer-events-none z-30 overflow-hidden"
-        >
-          {/* Near Cloud 1: Bottom Right sweeps past */}
-          <div 
-            className="near-cloud absolute -bottom-10 -right-20 w-[420px] h-[260px] rounded-full bg-white/70 blur-2xl" 
-            style={{ willChange: 'transform, opacity' }}
-          />
-          {/* Near Cloud 2: Top Left sweeps past */}
-          {!isMobile && (
-            <div 
-              className="near-cloud absolute -top-16 -left-24 w-[480px] h-[300px] rounded-full bg-white/60 blur-3xl"
-              style={{ willChange: 'transform, opacity' }}
-            />
-          )}
         </div>
 
       </div>
