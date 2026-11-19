@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { PaperPlane } from './PaperPlane';
 import { FlightJourney, getInitialFlightPlaneScreenPos, FlightJourneyHandle } from './FlightJourney';
+import { updateFlightState } from '../utils/flightState';
 import { ArrowRight } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -17,13 +18,15 @@ interface HeroProps {
   onOpenEnquiry: () => void;
   onConsultStage?: (stageIndex: number) => void;
   onOpenServiceModal?: (stageIndex: number) => void;
+  onIntroComplete?: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({
   onStartJourney,
   onOpenEnquiry,
   onConsultStage,
-  onOpenServiceModal
+  onOpenServiceModal,
+  onIntroComplete
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pinWrapperRef = useRef<HTMLDivElement>(null);
@@ -90,21 +93,53 @@ export const Hero: React.FC<HeroProps> = ({
   const introTimelineRef = useRef<gsap.core.Timeline | null>(null);
   const hasFinishedIntroRef = useRef(false);
 
+  // Guarantee that all hero text, stickers, plane, and CTAs are 100% visible
+  const ensureHeroContentVisible = useCallback(() => {
+    if (cykLettersRef.current?.children) {
+      gsap.set(cykLettersRef.current.children, {
+        y: 0,
+        opacity: 1,
+        scale: 1,
+        rotate: (i: number) => [-3.5, 2.5, -2][i] || 0
+      });
+    }
+    if (headlineMaskRef.current) {
+      gsap.set(headlineMaskRef.current, { y: 0, opacity: 1 });
+    }
+    if (underlinePathRef.current) {
+      underlinePathRef.current.style.strokeDashoffset = '0';
+    }
+    if (subtextRef.current) {
+      gsap.set(subtextRef.current, { opacity: 1, y: 0 });
+    }
+    if (ctaGroupRef.current) {
+      gsap.set(ctaGroupRef.current, { opacity: 1, y: 0, pointerEvents: 'auto' });
+    }
+    if (planeHeroRef.current) {
+      gsap.set(planeHeroRef.current, { scale: 1, opacity: 1, y: 0, rotate: 0 });
+    }
+    if (sheetContentRef.current) {
+      sheetContentRef.current.style.opacity = '1';
+      sheetContentRef.current.style.transform = 'translate3d(0, 0, 0)';
+    }
+    if (sheetRef.current) {
+      sheetRef.current.style.opacity = '1';
+    }
+  }, []);
+
   // Complete & teardown intro
   const finishIntro = useCallback((isImmediate = false) => {
     if (hasFinishedIntroRef.current) return;
     hasFinishedIntroRef.current = true;
     hasIntroPlayedInAppSession = true;
+    onIntroComplete?.();
 
     if (introTimelineRef.current) {
       introTimelineRef.current.kill();
     }
 
+    ensureHeroContentVisible();
     document.body.style.overflow = '';
-
-    if (underlinePathRef.current) {
-      underlinePathRef.current.style.strokeDashoffset = '0';
-    }
 
     if (overlayRef.current) {
       gsap.to(overlayRef.current, {
@@ -113,12 +148,22 @@ export const Hero: React.FC<HeroProps> = ({
         ease: 'power2.out',
         onComplete: () => {
           setIsOverlayActive(false);
+          ensureHeroContentVisible();
         }
       });
     } else {
       setIsOverlayActive(false);
+      ensureHeroContentVisible();
     }
-  }, []);
+  }, [ensureHeroContentVisible, onIntroComplete]);
+
+  // If intro is already skipped or inactive on load, notify parent and ensure content is visible
+  useEffect(() => {
+    if (!isOverlayActive) {
+      ensureHeroContentVisible();
+      onIntroComplete?.();
+    }
+  }, [isOverlayActive, ensureHeroContentVisible, onIntroComplete]);
 
   // Device detection & tilt setup
   useEffect(() => {
@@ -153,9 +198,7 @@ export const Hero: React.FC<HeroProps> = ({
   // Folder Intro Animation
   useEffect(() => {
     if (!isOverlayActive) {
-      if (underlinePathRef.current) {
-        underlinePathRef.current.style.strokeDashoffset = '0';
-      }
+      ensureHeroContentVisible();
       return;
     }
 
@@ -407,6 +450,7 @@ export const Hero: React.FC<HeroProps> = ({
           if (lastFlightP !== 0) {
             lastFlightP = 0;
             flightJourneyRef.current?.updateFlight(0);
+            updateFlightState(0, false);
           }
 
           // ===================================================================
@@ -617,6 +661,7 @@ export const Hero: React.FC<HeroProps> = ({
           // Direct imperative flight update (NO React setState!)
           lastFlightP = pFlight;
           flightJourneyRef.current?.updateFlight(pFlight);
+          updateFlightState(pFlight, pFlight > 0.01 && pFlight < 0.99);
 
           // Nav CTA and WhatsApp re-appear smoothly
           if (waBtn) {

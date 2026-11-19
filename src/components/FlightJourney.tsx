@@ -8,6 +8,7 @@ import {
   Megaphone, Store, ArrowRight, Quote, CheckCircle2, Sparkles, Sun
 } from 'lucide-react';
 import { PaperPlane } from './PaperPlane';
+import { setLenis } from '../utils/lenis';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -429,6 +430,8 @@ export const FlightJourney = forwardRef<FlightJourneyHandle, FlightJourneyProps>
       touchMultiplier: 1.2
     });
 
+    setLenis(lenis);
+
     lenis.on('scroll', ScrollTrigger.update);
 
     const tickerCb = (time: number) => {
@@ -438,6 +441,7 @@ export const FlightJourney = forwardRef<FlightJourneyHandle, FlightJourneyProps>
     // Use default GSAP lag smoothing to absorb frame jitter
 
     return () => {
+      setLenis(null);
       gsap.ticker.remove(tickerCb);
       lenis.destroy();
     };

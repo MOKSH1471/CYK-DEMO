@@ -16,6 +16,7 @@ export function App() {
   const [servicesOpen, setServicesOpen] = useState(false);
   const [prefilledStage, setPrefilledStage] = useState<number | undefined>(undefined);
   const [selectedServiceSlug, setSelectedServiceSlug] = useState<string | undefined>(undefined);
+  const [isIntroComplete, setIsIntroComplete] = useState(false);
 
   const handleOpenEnquiry = (stageIndex?: number) => {
     setPrefilledStage(stageIndex);
@@ -38,6 +39,7 @@ export function App() {
     <div className="min-h-screen bg-[#FAF8F5] text-[#121316] flex flex-col font-sans selection:bg-[#847445] selection:text-white">
       {/* 1. Sticky Header with Official Logo & Anchor Links */}
       <Header
+        isIntroComplete={isIntroComplete}
         onOpenEnquiry={() => handleOpenEnquiry()}
         onOpenServices={() => handleOpenServices()}
       />
@@ -49,6 +51,7 @@ export function App() {
           onOpenEnquiry={() => handleOpenEnquiry()}
           onConsultStage={(stageIndex) => handleOpenEnquiry(stageIndex)}
           onOpenServiceModal={() => handleOpenServices()}
+          onIntroComplete={() => setIsIntroComplete(true)}
         />
 
         {/* 3. Growth Journey: Stages 01 to 08 with continuous flight corridor */}
