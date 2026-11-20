@@ -397,9 +397,8 @@ export const CraftNavbar: React.FC<CraftNavbarProps> = ({
 
             {/* BAR INNER CONTENT */}
             <div
-              className={`relative z-20 flex items-center justify-between px-3 sm:px-5 transition-all duration-200 ${
-                isCompact ? 'py-1.5 sm:py-2' : 'py-2 sm:py-2.5'
-              }`}
+              className={`relative z-20 flex items-center justify-between px-3 sm:px-5 transition-all duration-200 ${isCompact ? 'py-1.5 sm:py-2' : 'py-2 sm:py-2.5'
+                }`}
             >
               {/* LEFT: KRAFT EYELET MENU BUTTON */}
               <div className="flex items-center gap-2 sm:gap-3">
@@ -442,16 +441,14 @@ export const CraftNavbar: React.FC<CraftNavbarProps> = ({
                   {/* Menu / Close Text label in display font */}
                   <div className="relative h-5 overflow-hidden text-left flex flex-col justify-center">
                     <span
-                      className={`font-sans font-bold text-xs sm:text-sm tracking-tight text-[#14181F] transition-transform duration-300 ${
-                        isOpen ? '-translate-y-5 opacity-0' : 'translate-y-0 opacity-100'
-                      }`}
+                      className={`font-sans font-bold text-xs sm:text-sm tracking-tight text-[#14181F] transition-transform duration-300 ${isOpen ? '-translate-y-5 opacity-0' : 'translate-y-0 opacity-100'
+                        }`}
                     >
                       Menu
                     </span>
                     <span
-                      className={`font-sans font-bold text-xs sm:text-sm tracking-tight text-[#847445] absolute inset-0 flex items-center transition-transform duration-300 ${
-                        isOpen ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'
-                      }`}
+                      className={`font-sans font-bold text-xs sm:text-sm tracking-tight text-[#847445] absolute inset-0 flex items-center transition-transform duration-300 ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'
+                        }`}
                     >
                       Close
                     </span>
@@ -542,9 +539,8 @@ export const CraftNavbar: React.FC<CraftNavbarProps> = ({
 
                         {/* Micro Paper Plane Glyph: strictly riding the exact head of the fill line */}
                         <g
-                          transform={`translate(${
-                            12 + Math.max(0, Math.min(1, flightState.pFlight)) * 232
-                          }, 12)`}
+                          transform={`translate(${12 + Math.max(0, Math.min(1, flightState.pFlight)) * 232
+                            }, 12)`}
                           className="pointer-events-none"
                         >
                           {/* Paper plane body pointing forward (+X) along the thread */}
@@ -645,11 +641,10 @@ export const CraftNavbar: React.FC<CraftNavbarProps> = ({
                         key={group.label}
                         onMouseEnter={() => setHoveredColumn(colIdx)}
                         onMouseLeave={() => setHoveredColumn(null)}
-                        className={`folder-tab-col relative rounded-2xl p-4 sm:p-5 transition-[transform,background-color,box-shadow] duration-150 border border-[#E8E2D5] ${
-                          isHovered
-                            ? 'bg-[#F4EFE6] -translate-y-1 shadow-sm border-[#847445]/30'
-                            : 'bg-[#FFFDF8]/90 shadow-2xs'
-                        }`}
+                        className={`folder-tab-col relative rounded-2xl p-4 sm:p-5 transition-[transform,background-color,box-shadow] duration-150 border border-[#E8E2D5] ${isHovered
+                          ? 'bg-[#F4EFE6] -translate-y-1 shadow-sm border-[#847445]/30'
+                          : 'bg-[#FFFDF8]/90 shadow-2xs'
+                          }`}
                       >
                         {/* Folder Header Tab Shoulder */}
                         <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#847445]/20">

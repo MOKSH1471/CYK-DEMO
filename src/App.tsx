@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { GrowthJourney } from './components/GrowthJourney';
 import { AudienceSelector } from './components/AudienceSelector';
+import { CorkboardGallery } from './components/CorkboardGallery';
 import { CaseStudies } from './components/CaseStudies';
 import { TestimonialsSection } from './components/TestimonialsSection';
 import { HoReCaTalks } from './components/HoReCaTalks';
@@ -65,7 +66,10 @@ export function App() {
           onSelectAudience={(targetStage) => handleOpenEnquiry(targetStage)}
         />
 
-        {/* 5. Work / Projects: Verified case studies with dual-facet filtering */}
+        {/* 5. Culinary R&D Gallery: Pinned corkboard collage with taped prints */}
+        <CorkboardGallery />
+
+        {/* 6. Work / Projects: Verified case studies with dual-facet filtering */}
         <CaseStudies
           onEnquireProject={() => handleOpenEnquiry()}
         />
